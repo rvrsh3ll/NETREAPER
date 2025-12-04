@@ -114,14 +114,14 @@ Built for red teamers, penetration testers, and security researchers who want po
 ```bash
 # Clone the repository
 git clone https://github.com/Nerds489/NETREAPER.git
-cd netreaper
+cd NETREAPER
 
 # Make executable and install system-wide
 chmod +x netreaper
 sudo ./netreaper --install
 
 # Run it
-netreaper
+sudo netreaper
 ```
 
 ### Manual Install
@@ -175,10 +175,10 @@ sudo apt install -y nmap masscan unicornscan netdiscover arp-scan fping \
 
 ```bash
 # Launch the interactive menu
-netreaper
+sudo netreaper
 
 # Or explicitly
-netreaper menu
+sudo netreaper menu
 ```
 
 The interactive menu provides guided access to all features with a clean, menacing interface.
@@ -187,21 +187,21 @@ The interactive menu provides guided access to all features with a clean, menaci
 
 ```bash
 # Port scanning
-netreaper scan 192.168.1.0/24              # Quick scan
-netreaper scan 10.0.0.1 --full             # Full port + service scan
-netreaper scan target.com --stealth        # Low-profile scan
-netreaper scan target.com --vuln           # Vulnerability scripts
+sudo netreaper scan 192.168.1.0/24              # Quick scan
+sudo netreaper scan 10.0.0.1 --full             # Full port + service scan
+sudo netreaper scan target.com --stealth        # Low-profile scan
+sudo netreaper scan target.com --vuln           # Vulnerability scripts
 
 # WiFi operations
-netreaper wifi --monitor wlan0             # Enable monitor mode
-netreaper wifi --managed wlan0             # Disable monitor mode
-netreaper wifi --scan                      # Scan for networks
+sudo netreaper wifi --monitor wlan0             # Enable monitor mode
+sudo netreaper wifi --managed wlan0             # Disable monitor mode
+sudo netreaper wifi --scan                      # Scan for networks
 
 # Utilities
-netreaper status                           # Show installed tools
-netreaper install                          # Install tool packages
-netreaper help                             # Show help
-netreaper --version                        # Show version
+sudo netreaper status                           # Show installed tools
+sudo netreaper install                          # Install tool packages
+sudo netreaper help                             # Show help
+sudo netreaper --version                        # Show version
 ```
 
 ### First Run
