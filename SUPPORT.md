@@ -25,10 +25,9 @@ See [SECURITY.md](SECURITY.md) - **Do not open public issues for vulnerabilities
 
 Commercial support and custom development available through:
 - **OFFTRACKMEDIA Studios**
-- **Network & Firewall Technicians (NFT)**
 
 Contact: oss@offtrackmediaofficial.com
 
 ---
 
-© 2025 OFFTRACKMEDIA Studios & Network & Firewall Technicians
+© 2025 OFFTRACKMEDIA Studios

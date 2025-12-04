@@ -25,5 +25,5 @@ This Code of Conduct is adapted from the [Contributor Covenant](https://www.cont
 
 ---
 
-This project is governed by OFFTRACKMEDIA Studios & Network & Firewall Technicians.
+This project is governed by OFFTRACKMEDIA Studios.
 © 2025 · ABN 84 290 819 896

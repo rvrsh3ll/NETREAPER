@@ -38,7 +38,7 @@ Thank you for your interest in contributing to NETREAPER! 💀
 
 By submitting a contribution, you agree that:
 - Your contribution will be licensed under the Apache 2.0 License
-- OFFTRACKMEDIA Studios and Network & Firewall Technicians may use and distribute your contribution
+- OFFTRACKMEDIA Studios may use and distribute your contribution
 - You have the right to submit the contribution
 
 ## Code Style
@@ -57,4 +57,4 @@ By submitting a contribution, you agree that:
 
 ---
 
-© 2025 OFFTRACKMEDIA Studios & Network & Firewall Technicians · ABN 84 290 819 896
+© 2025 OFFTRACKMEDIA Studios · ABN 84 290 819 896

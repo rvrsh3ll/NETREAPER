@@ -10,8 +10,8 @@
 #
 #    "Some tools scan. Some tools attack. I do both."
 #
-#    Author:  Network & Firewall Technicians (NFT)
-#    Version: 4.1.0 (Phantom)
+#    Author:  OFFTRACKMEDIA Studios
+#    Version: 4.3.0 (Phantom)
 #    License: MIT
 #    
 #    What happens when aircrack-ng and wifite have a baby,
@@ -24,7 +24,7 @@ set -uo pipefail
 QUIET=0
 JSON_OUTPUT=0
 
-readonly VERSION="4.1.0"
+readonly VERSION="4.3.0"
 readonly CODENAME="Phantom"
 readonly SCRIPT_NAME="netreaper"
 # shellcheck disable=SC2034

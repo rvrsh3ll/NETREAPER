@@ -10,7 +10,7 @@ APPLICABLE SOFTWARE: NETREAPER - Network Security & WiFi Assault Toolkit
 1. Purpose and Scope
 This End-User License Agreement ("EULA") governs your use of NETREAPER and all 
 associated software, source code, documentation, and digital assets (collectively, 
-the "Software") provided by OFFTRACKMEDIA Studios and Network & Firewall Technicians.
+the "Software") provided by OFFTRACKMEDIA Studios.
 
 By downloading, installing, or using the Software, you agree to this EULA and the 
 accompanying open-source license (Apache 2.0).
@@ -21,23 +21,22 @@ license to use, modify, and distribute the Software in accordance with the Apach
 License 2.0 terms.
 
 No ownership of trademarks, logos, or brand identity assets is transferred. All 
-OFFTRACKMEDIA Studios and NFT trade dress, marks, and studio identifiers remain 
-the exclusive intellectual property of their respective owners.
+OFFTRACKMEDIA Studios trade dress, marks, and studio identifiers remain 
+the exclusive intellectual property of their owners.
 
 3. Permitted Uses
 - Use and modify the Software for personal, educational, or commercial purposes 
   consistent with the Apache 2.0 license.
 - Include the NOTICE and LICENSE files in all redistributions.
-- Reference the Software in derivative works, provided OFFTRACKMEDIA Studios and 
-  Network & Firewall Technicians are credited as the original creators.
+- Reference the Software in derivative works, provided OFFTRACKMEDIA Studios is credited as the original creator.
 
 4. Restrictions
 You may not:
 - Use the Software for unauthorized access to computer systems or networks
 - Misrepresent the Software or derivative works as being officially produced, 
-  endorsed, or supported by OFFTRACKMEDIA Studios or NFT
+  endorsed, or supported by OFFTRACKMEDIA Studios
 - Remove or alter copyright notices, document IDs, or attribution headers
-- Use OFFTRACKMEDIA Studios or NFT brand elements without prior written consent
+- Use OFFTRACKMEDIA Studios brand elements without prior written consent
 - Deploy the Software in contexts that violate applicable laws or ethical standards
 
 5. PENETRATION TESTING DISCLAIMER
@@ -51,20 +50,18 @@ BY USING THIS SOFTWARE, YOU ACKNOWLEDGE:
 
 6. Ownership and Intellectual Property
 All rights, title, and interest in and to the Software (excluding third-party 
-open-source components) remain with OFFTRACKMEDIA Studios and Network & Firewall 
-Technicians.
+open-source components) remain with OFFTRACKMEDIA Studios.
 
 Contributions to the repository are accepted under the terms of the CONTRIBUTING.md 
 file and the Apache 2.0 license.
 
 7. Disclaimer of Warranties
 The Software is provided "AS IS" without warranty of any kind, express or implied.
-OFFTRACKMEDIA Studios and NFT disclaim all warranties, including but not limited to 
+OFFTRACKMEDIA Studios disclaims all warranties, including but not limited to 
 fitness for a particular purpose, merchantability, and non-infringement.
 
 8. Limitation of Liability
-In no event shall OFFTRACKMEDIA Studios, Network & Firewall Technicians, their 
-directors, employees, or affiliates be liable for any damages arising out of the 
+In no event shall OFFTRACKMEDIA Studios, its directors, employees, or affiliates be liable for any damages arising out of the 
 use or inability to use the Software.
 
 9. Compliance and Jurisdiction
@@ -81,5 +78,4 @@ Email: otmhr.mail@offtrackmediaofficial.com
 Division: Legal & Compliance – OFFTRACKMEDIA Studios
 
 OFFTRACKMEDIA Studios
-Network & Firewall Technicians
 "Building Empires, Not Just Brands."

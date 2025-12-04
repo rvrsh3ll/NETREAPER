@@ -16,7 +16,7 @@
 
 <br>
 
-[![Version](https://img.shields.io/badge/VERSION-4.1.0_PHANTOM-ff0040?style=for-the-badge&logo=ghost&logoColor=white)](https://github.com/Nerds489/NETREAPER)
+[![Version](https://img.shields.io/badge/VERSION-4.3.0_PHANTOM-ff0040?style=for-the-badge&logo=ghost&logoColor=white)](https://github.com/Nerds489/NETREAPER)
 [![License](https://img.shields.io/badge/LICENSE-MIT-00d4ff?style=for-the-badge&logo=opensourceinitiative&logoColor=white)](LICENSE)
 [![Platform](https://img.shields.io/badge/PLATFORM-LINUX-ffaa00?style=for-the-badge&logo=linux&logoColor=white)](https://www.linux.org/)
 [![Bash](https://img.shields.io/badge/BASH-5.0+-40c057?style=for-the-badge&logo=gnubash&logoColor=white)](https://www.gnu.org/software/bash/)
@@ -267,7 +267,7 @@ sudo netreaper-install status
 ═══════════════════════════════════════════════════════════════════════════
 ║ "Some tools scan. Some tools attack. I do both."                        ║
 ═══════════════════════════════════════════════════════════════════════════
-                    [ v4.1.0 // Phantom // 70+ Tools ]
+                    [ v4.3.0 // Phantom // 70+ Tools ]
 
 ### Tool Status
 ╔═══════════════════════════════════════════════════════════╗
@@ -401,7 +401,7 @@ Apache License 2.0 - See [LICENSE](LICENSE) for details.
 
 ## 🙏 Credits
 
-Built with hatred for complexity and love for chaos by **[Network & Firewall Technicians (NFT)](https://github.com/Nerds489)**
+Built with hatred for complexity and love for chaos by **OFFTRACKMEDIA Studios**
 
 ### Standing on the shoulders of giants:
 - [aircrack-ng](https://github.com/aircrack-ng/aircrack-ng)
@@ -435,7 +435,7 @@ Built with hatred for complexity and love for chaos by **[Network & Firewall Tec
 
 This project is licensed under the **Apache License 2.0** - see [LICENSE](LICENSE) for details.
 
-**© 2025 OFFTRACKMEDIA Studios & Network & Firewall Technicians (NFT)**
+**© 2025 OFFTRACKMEDIA Studios**
 ABN: 84 290 819 896
 
 - [EULA](EULA/OFFTRACKMEDIA_EULA_2025.txt)

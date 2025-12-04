@@ -42,4 +42,4 @@ When using NETREAPER:
 
 ---
 
-© 2025 OFFTRACKMEDIA Studios & Network & Firewall Technicians
+© 2025 OFFTRACKMEDIA Studios

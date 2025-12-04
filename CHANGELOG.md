@@ -2,6 +2,21 @@
 
 All notable changes to NETREAPER will be documented in this file.
 
+## [4.3.0] - Phantom - 2024-12-05
+
+### Added
+- Apache 2.0 licensing and NOTICE file
+- Governance docs: Code of Conduct, Contributing, Security, Support
+- OFFTRACKMEDIA EULA and GitHub issue/PR templates
+
+### Changed
+- Consolidated branding solely under OFFTRACKMEDIA Studios
+- Updated README legal section and badges to 4.3.0
+- Author attribution in scripts now reflects OFFTRACKMEDIA Studios
+
+### Fixed
+- Removed remaining NFT references across docs and scripts
+
 ## [4.1.0] - Phantom - 2024-12-05
 
 ### Changed
