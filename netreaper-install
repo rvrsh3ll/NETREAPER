@@ -9,7 +9,7 @@
 #
 #═══════════════════════════════════════════════════════════════════════════════
 
-set -euo pipefail
+set -o pipefail
 
 readonly VERSION="2.0.0"
 readonly SCRIPT_NAME="netreaper-install"
@@ -23,39 +23,117 @@ readonly C_CYAN='\033[38;5;51m'
 readonly C_BLUE='\033[38;5;39m'
 readonly C_SHADOW='\033[38;5;244m'
 
-declare -A TOOL_BINARIES=(
-    [metasploit-framework]="msfconsole"
-    [testssl.sh]="testssl"
-    [burpsuite]="burpsuite"
-    [impacket-scripts]="impacket-secretsdump secretsdump.py"
-    [impacket-smbclient]="impacket-smbclient smbclient.py"
-    [impacket-psexec]="impacket-psexec psexec.py"
-    [impacket-wmiexec]="impacket-wmiexec wmiexec.py"
-)
-
 # Logging
 log_info()    { echo -e "    ${C_CYAN}[*]${C_RESET} $*"; }
 log_success() { echo -e "    ${C_GREEN}[✓]${C_RESET} $*"; }
 log_warning() { echo -e "    ${C_YELLOW}[!]${C_RESET} $*"; }
 log_error()   { echo -e "    ${C_RED}[✗]${C_RESET} $*"; }
+log_verbose() { [[ -n "${VERBOSE:-}" ]] && echo -e "    ${C_SHADOW}[-]${C_RESET} $*"; }
 
-show_progress() {
-    local current=$1 total=$2 message="${3:-Progress}" width=40
-    local pct=$((current * 100 / total))
-    local filled=$((pct * width / 100))
-    local empty=$((width - filled))
-    echo -ne "\r    ${C_SHADOW}$message: ${C_RESET}["
-    printf '%*s' "$filled" '' | tr ' ' '█'
-    printf '%*s' "$empty" '' | tr ' ' '░'
-    echo -ne "] ${pct}%"
-    ((current == total)) && echo
+# Global tracking
+declare -a FAILED_TOOLS=()
+declare -a SKIPPED_TOOLS=()
+declare -a INSTALL_ATTEMPTED=()
+declare -a ALL_FAILED_TOOLS=()
+declare -a ALL_SKIPPED_TOOLS=()
+declare -a ALL_INSTALL_ATTEMPTED=()
+INSTALL_ERRORS=0
+
+# Error handler (non-fatal)
+handle_error() {
+    local tool="$1"
+    local method="$2"
+    local exit_code="$3"
+
+    FAILED_TOOLS+=("$tool:$method:$exit_code")
+    ((INSTALL_ERRORS++))
+
+    log_warning "$tool installation failed ($method, exit code: $exit_code)"
+    return 0
 }
 
-is_tool_installed() {
-    local tool="$1"
-    local binaries="${TOOL_BINARIES[$tool]:-$tool}"
+# Tool definitions
+# Format: [tool]="binary:package:primary_method:fallback_method"
+declare -A TOOLS=(
+    # SCANNING
+    [nmap]="nmap:nmap:apt:-"
+    [masscan]="masscan:masscan:apt:-"
+    [rustscan]="rustscan:RustScan/RustScan:github:-"
+    [zmap]="zmap:zmap:apt:-"
+    [arp-scan]="arp-scan:arp-scan:apt:-"
+    [netdiscover]="netdiscover:netdiscover:apt:-"
+    [hping3]="hping3:hping3:apt:-"
+    [fping]="fping:fping:apt:-"
 
-    for bin in $binaries; do
+    # WIRELESS
+    [aircrack-ng]="aircrack-ng:aircrack-ng:apt:-"
+    [reaver]="reaver:reaver:apt:-"
+    [bully]="bully:bully:apt:-"
+    [pixiewps]="pixiewps:pixiewps:apt:-"
+    [wifite]="wifite:wifite:apt:pip"
+    [bettercap]="bettercap:bettercap:apt:github"
+    [mdk3]="mdk3:mdk3:apt:-"
+    [mdk4]="mdk4:mdk4:apt:-"
+    [hostapd]="hostapd:hostapd:apt:-"
+    [cowpatty]="cowpatty:cowpatty:apt:-"
+
+    # WEB
+    [nikto]="nikto:nikto:apt:-"
+    [sqlmap]="sqlmap:sqlmap:apt:pip"
+    [dirb]="dirb:dirb:apt:-"
+    [gobuster]="gobuster:gobuster:apt:go"
+    [ffuf]="ffuf:ffuf:apt:go"
+    [wpscan]="wpscan:wpscan:gem:apt"
+    [nuclei]="nuclei:projectdiscovery/nuclei:github:go"
+    [httpx]="httpx:projectdiscovery/httpx:github:go"
+    [subfinder]="subfinder:projectdiscovery/subfinder:github:go"
+    [amass]="amass:owasp-amass/amass:github:snap"
+
+    # EXPLOIT
+    [metasploit-framework]="msfconsole:metasploit-framework:apt:-"
+    [exploitdb]="searchsploit:exploitdb:apt:-"
+    [crackmapexec]="crackmapexec:crackmapexec:pipx:pip"
+
+    # OSINT
+    [theharvester]="theHarvester:theHarvester:apt:pip"
+    [recon-ng]="recon-ng:recon-ng:apt:pip"
+    [maltego]="maltego:maltego:apt:-"
+    [shodan]="shodan:shodan:pip:-"
+
+    # CREDENTIALS
+    [hashcat]="hashcat:hashcat:apt:-"
+    [john]="john:john:apt:-"
+    [hydra]="hydra:hydra:apt:-"
+    [medusa]="medusa:medusa:apt:-"
+
+    # TRAFFIC
+    [tcpdump]="tcpdump:tcpdump:apt:-"
+    [wireshark]="wireshark:wireshark:apt:-"
+    [tshark]="tshark:tshark:apt:-"
+    [ettercap]="ettercap:ettercap-common:apt:-"
+)
+
+# Categories
+declare -A CATEGORIES=(
+    [scanning]="nmap masscan rustscan zmap arp-scan netdiscover hping3 fping"
+    [wireless]="aircrack-ng reaver bully pixiewps wifite bettercap mdk3 mdk4 hostapd cowpatty"
+    [web]="nikto sqlmap dirb gobuster wpscan ffuf nuclei httpx subfinder amass"
+    [exploit]="metasploit-framework exploitdb crackmapexec"
+    [osint]="theharvester recon-ng maltego shodan"
+    [creds]="hashcat john hydra medusa"
+    [traffic]="tcpdump wireshark tshark ettercap"
+)
+
+check_tool_installed() {
+    local tool="$1"
+    local info="${TOOLS[$tool]:-}"
+    local binary="$tool"
+
+    if [[ -n "$info" ]]; then
+        binary=$(echo "$info" | cut -d: -f1)
+    fi
+
+    for bin in $binary; do
         if command -v "$bin" &>/dev/null; then
             return 0
         fi
@@ -69,342 +147,466 @@ is_tool_installed() {
     return 1
 }
 
-# Check root
-require_root() {
+# Pre-flight checks
+preflight_checks() {
+    echo -e "    ${C_CYAN}[*]${C_RESET} Running pre-flight checks..."
+
     if [[ $EUID -ne 0 ]]; then
-        log_error "This installer must be run as root"
-        echo -e "    ${C_SHADOW}Usage: sudo $SCRIPT_NAME [category]${C_RESET}"
+        echo -e "    ${C_RED}[!]${C_RESET} This installer requires root privileges"
+        echo -e "    ${C_SHADOW}    Run: sudo $SCRIPT_NAME${C_RESET}"
         exit 1
     fi
+
+    if ! ping -c 1 -W 3 8.8.8.8 &>/dev/null; then
+        echo -e "    ${C_YELLOW}[!]${C_RESET} No internet connection detected"
+        echo -e "    ${C_SHADOW}    Some installations may fail${C_RESET}"
+    fi
+
+    echo -ne "    ${C_CYAN}[*]${C_RESET} Updating package lists..."
+    apt-get update &>/dev/null
+    echo -e "\r    ${C_GREEN}[✓]${C_RESET} Package lists updated    "
+
+    echo -ne "    ${C_CYAN}[*]${C_RESET} Installing base dependencies..."
+    apt-get install -y curl wget git unzip jq &>/dev/null
+    echo -e "\r    ${C_GREEN}[✓]${C_RESET} Base dependencies ready  "
+
+    if ! command -v pip3 &>/dev/null; then
+        apt-get install -y python3-pip &>/dev/null
+    fi
+
+    if ! command -v pipx &>/dev/null; then
+        apt-get install -y pipx &>/dev/null || \
+        pip3 install pipx --break-system-packages &>/dev/null
+    fi
+
+    echo -e "    ${C_GREEN}[✓]${C_RESET} Pre-flight checks complete"
+    echo
 }
 
-# Tool categories
-# shellcheck disable=SC2034
-declare -A TOOLS_SCANNING=(
-    [nmap]="apt"
-    [masscan]="apt"
-    [rustscan]="github:RustScan/RustScan"
-    [netdiscover]="apt"
-    [arp-scan]="apt"
-    [fping]="apt"
-    [hping3]="apt"
-    [zmap]="apt"
-    [nbtscan]="apt"
-)
+# Install helpers
+install_apt() {
+    local package="$1"
+    DEBIAN_FRONTEND=noninteractive apt-get install -y "$package" &>/dev/null
+}
 
-# shellcheck disable=SC2034
-declare -A TOOLS_DNS=(
-    [dnsenum]="apt"
-    [dnsrecon]="apt"
-    [dnsmap]="apt"
-    [fierce]="apt"
-)
+install_pip() {
+    local package="$1"
+    pip3 install "$package" --user --break-system-packages &>/dev/null || \
+    pip3 install "$package" --user &>/dev/null || \
+    pip install "$package" --user &>/dev/null
+}
 
-# shellcheck disable=SC2034
-declare -A TOOLS_SSL=(
-    [sslscan]="apt"
-    [sslyze]="apt"
-    [testssl.sh]="git:https://github.com/drwetter/testssl.sh.git"
-)
+install_pipx() {
+    local package="$1"
+    command -v pipx &>/dev/null || {
+        apt-get install -y pipx &>/dev/null || \
+        pip3 install pipx --user --break-system-packages &>/dev/null
+    }
+    pipx install "$package" &>/dev/null || \
+    pipx install "$package" --force &>/dev/null
+}
 
-# shellcheck disable=SC2034
-declare -A TOOLS_WIFI=(
-    [aircrack-ng]="apt"
-    [reaver]="apt"
-    [bully]="apt"
-    [pixiewps]="apt"
-    [wifite]="apt"
-    [cowpatty]="apt"
-    [mdk3]="apt"
-    [mdk4]="apt"
-    [hostapd]="apt"
-    [dnsmasq]="apt"
-    [macchanger]="apt"
-    [bettercap]="apt"
-)
+install_gem() {
+    local package="$1"
+    command -v gem &>/dev/null || apt-get install -y ruby ruby-dev &>/dev/null
+    gem install "$package" --no-document &>/dev/null
+}
 
-# shellcheck disable=SC2034
-declare -A TOOLS_WEB=(
-    [nikto]="apt"
-    [sqlmap]="apt"
-    [dirb]="apt"
-    [gobuster]="apt"
-    [wpscan]="gem"
-    [ffuf]="go:github.com/ffuf/ffuf/v2@latest"
-    [nuclei]="go:github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest"
-    [httpx]="go:github.com/projectdiscovery/httpx/cmd/httpx@latest"
-    [subfinder]="go:github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest"
-    [amass]="apt"
-)
+install_go() {
+    local package="$1"
+    command -v go &>/dev/null || apt-get install -y golang-go &>/dev/null
+    go install "$package"@latest &>/dev/null
+}
 
-# shellcheck disable=SC2034
-declare -A TOOLS_EXPLOIT=(
-    [metasploit-framework]="apt"
-    [exploitdb]="apt"
-    [crackmapexec]="pipx"
-)
+install_snap() {
+    local package="$1"
+    command -v snap &>/dev/null || return 1
+    snap install "$package" &>/dev/null || \
+    snap install "$package" --classic &>/dev/null
+}
 
-# shellcheck disable=SC2034
-declare -A TOOLS_TRAFFIC=(
-    [tcpdump]="apt"
-    [wireshark]="apt"
-    [tshark]="apt"
-    [ettercap-text-only]="apt"
-    [bettercap]="apt"
-)
+install_flatpak() {
+    local package="$1"
+    command -v flatpak &>/dev/null || return 1
+    flatpak install -y flathub "$package" &>/dev/null
+}
 
-# shellcheck disable=SC2034
-declare -A TOOLS_OSINT=(
-    [theharvester]="apt"
-    [recon-ng]="apt"
-    [shodan]="pip"
-    [maltego]="apt"
-)
+install_github() {
+    local tool="$1"
+    local repo="$2"
+    local api_url="https://api.github.com/repos/$repo/releases/latest"
+    local release_json
 
-# shellcheck disable=SC2034
-declare -A TOOLS_CREDS=(
-    [hashcat]="apt"
-    [john]="apt"
-    [hydra]="apt"
-    [medusa]="apt"
-)
+    release_json=$(curl -sL --connect-timeout 10 --max-time 30 "$api_url") || return 1
 
-# shellcheck disable=SC2034
-declare -A TOOLS_POST=(
-    [impacket-scripts]="apt"
-    [python3-impacket]="apt"
-)
+    local download_url
+    download_url=$(echo "$release_json" | grep -oP '"browser_download_url":\s*"\K[^"]+' | \
+        grep -iE 'linux.*amd64|linux.*x86_64|linux64|amd64\.deb' | \
+        grep -vE '\.sha256|\.sig|\.asc' | head -1)
 
-# shellcheck disable=SC2034
-declare -A TOOLS_WORDLISTS=(
-    [wordlists]="apt"
-    [seclists]="apt"
-)
+    [[ -z "$download_url" ]] && return 1
 
-# Unified tool/category mapping
-declare -A CATEGORIES=(
-    [essential]="nmap aircrack-ng hashcat john hydra nikto gobuster sqlmap tcpdump wireshark"
-    [scanning]="nmap masscan rustscan unicornscan zmap netdiscover arp-scan fping hping3 nbtscan"
-    [wireless]="aircrack-ng reaver bully pixiewps wifite bettercap mdk3 mdk4 hostapd cowpatty"
-    [web]="nikto sqlmap dirb gobuster wpscan ffuf nuclei httpx subfinder amass"
-    [exploit]="metasploit-framework searchsploit crackmapexec"
-    [creds]="hashcat john hydra medusa"
-    [osint]="theharvester recon-ng shodan maltego"
-    [post]="impacket-scripts mimikatz"
-)
+    local tmp_file="/tmp/${tool}_download_$$"
+    curl -sL --connect-timeout 10 --max-time 120 "$download_url" -o "$tmp_file" || return 1
 
-method_for_tool() {
-    local t="$1"
-    for assoc in TOOLS_SCANNING TOOLS_DNS TOOLS_SSL TOOLS_WIFI TOOLS_WEB TOOLS_EXPLOIT TOOLS_TRAFFIC TOOLS_OSINT TOOLS_CREDS TOOLS_POST TOOLS_WORDLISTS; do
-        # shellcheck disable=SC2178
-        local -n ref="$assoc"
-        if [[ -n "${ref[$t]:-}" ]]; then
-            echo "${ref[$t]}"
-            return 0
+    case "$download_url" in
+        *.deb)
+            dpkg -i "$tmp_file" &>/dev/null
+            apt-get install -f -y &>/dev/null
+            ;;
+        *.tar.gz|*.tgz)
+            local extract_dir="/tmp/${tool}_extract_$$"
+            mkdir -p "$extract_dir"
+            tar -xzf "$tmp_file" -C "$extract_dir" &>/dev/null
+            local binary
+            binary=$(find "$extract_dir" -type f -executable -name "*$tool*" 2>/dev/null | head -1)
+            [[ -z "$binary" ]] && binary=$(find "$extract_dir" -type f -executable 2>/dev/null | head -1)
+            [[ -n "$binary" ]] && install -m 755 "$binary" /usr/local/bin/"$tool"
+            rm -rf "$extract_dir"
+            ;;
+        *.zip)
+            local extract_dir="/tmp/${tool}_extract_$$"
+            mkdir -p "$extract_dir"
+            unzip -q "$tmp_file" -d "$extract_dir" &>/dev/null
+            local binary
+            binary=$(find "$extract_dir" -type f -executable -name "*$tool*" 2>/dev/null | head -1)
+            [[ -z "$binary" ]] && binary=$(find "$extract_dir" -type f -executable 2>/dev/null | head -1)
+            [[ -n "$binary" ]] && install -m 755 "$binary" /usr/local/bin/"$tool"
+            rm -rf "$extract_dir"
+            ;;
+        *)
+            install -m 755 "$tmp_file" /usr/local/bin/"$tool"
+            ;;
+    esac
+
+    rm -f "$tmp_file"
+    command -v "$tool" &>/dev/null
+}
+
+install_git() {
+    local tool="$1"
+    local repo="$2"
+    local install_dir="/opt/$tool"
+
+    rm -rf "$install_dir"
+    git clone --depth 1 "https://github.com/$repo.git" "$install_dir" &>/dev/null || return 1
+
+    if [[ -f "$install_dir/setup.py" ]]; then
+        (cd "$install_dir" && pip3 install . &>/dev/null)
+    elif [[ -f "$install_dir/requirements.txt" ]]; then
+        pip3 install -r "$install_dir/requirements.txt" &>/dev/null
+    fi
+
+    for script in "$tool" "$tool.py" "main.py" "${tool}.sh"; do
+        if [[ -f "$install_dir/$script" ]]; then
+            chmod +x "$install_dir/$script"
+            ln -sf "$install_dir/$script" /usr/local/bin/"$tool" 2>/dev/null
+            break
         fi
     done
+
+    return 0
+}
+
+install_script() {
+    local tool="$1"
+    local script_url="$2"
+    curl -sL "$script_url" | bash &>/dev/null
+}
+
+# Tool-specific installers
+install_wpscan() {
+    if command -v gem &>/dev/null; then
+        apt-get install -y ruby ruby-dev libcurl4-openssl-dev make &>/dev/null
+        gem install wpscan --no-document &>/dev/null && return 0
+    fi
+
+    apt-get install -y wpscan &>/dev/null && return 0
+
+    if command -v docker &>/dev/null; then
+        docker pull wpscanteam/wpscan &>/dev/null
+        cat > /usr/local/bin/wpscan <<'EOF'
+#!/bin/bash
+docker run -it --rm wpscanteam/wpscan "$@"
+EOF
+        chmod +x /usr/local/bin/wpscan
+        return 0
+    fi
+
     return 1
 }
 
-# Unified tool/category mapping
-declare -A CATEGORIES=(
-    [essential]="nmap aircrack-ng hashcat john hydra nikto gobuster sqlmap tcpdump wireshark"
-    [scanning]="nmap masscan rustscan unicornscan zmap netdiscover arp-scan fping hping3 nbtscan"
-    [wireless]="aircrack-ng reaver bully pixiewps wifite bettercap mdk3 mdk4 hostapd cowpatty"
-    [web]="nikto sqlmap dirb gobuster wpscan ffuf nuclei httpx subfinder amass"
-    [exploit]="metasploit-framework searchsploit crackmapexec"
-    [creds]="hashcat john hydra medusa"
-    [osint]="theharvester recon-ng shodan maltego"
-    [post]="impacket-scripts mimikatz"
-)
+install_amass() {
+    local repo="owasp-amass/amass"
+    install_github "amass" "$repo" && return 0
 
-method_for_tool() {
-    local t="$1"
-    for assoc in TOOLS_SCANNING TOOLS_DNS TOOLS_SSL TOOLS_WIFI TOOLS_WEB TOOLS_EXPLOIT TOOLS_TRAFFIC TOOLS_OSINT TOOLS_CREDS TOOLS_POST TOOLS_WORDLISTS; do
-        # shellcheck disable=SC2178
-        local -n ref="$assoc"
-        if [[ -n "${ref[$t]:-}" ]]; then
-            echo "${ref[$t]}"
-            return 0
-        fi
-    done
+    if command -v snap &>/dev/null; then
+        snap install amass &>/dev/null && return 0
+    fi
+
+    if command -v go &>/dev/null; then
+        go install github.com/owasp-amass/amass/v4/...@latest &>/dev/null && return 0
+    fi
+
+    apt-get install -y amass &>/dev/null && return 0
     return 1
 }
 
-# Install single tool
+install_crackmapexec() {
+    if command -v pipx &>/dev/null || pip3 install pipx --user --break-system-packages &>/dev/null; then
+        pipx install git+https://github.com/Pennyw0rth/NetExec &>/dev/null && {
+            ln -sf ~/.local/bin/netexec /usr/local/bin/crackmapexec 2>/dev/null
+            return 0
+        }
+    fi
+
+    pip3 install git+https://github.com/Pennyw0rth/NetExec --break-system-packages &>/dev/null && return 0
+    apt-get install -y crackmapexec &>/dev/null && return 0
+    return 1
+}
+
+install_shodan() {
+    pip3 install shodan --user --break-system-packages &>/dev/null || \
+    pip3 install shodan --user &>/dev/null || \
+    pip install shodan --user &>/dev/null
+
+    export PATH="$HOME/.local/bin:$PATH"
+    command -v shodan &>/dev/null
+}
+
+install_theharvester() {
+    apt-get install -y theharvester &>/dev/null && return 0
+
+    pip3 install theHarvester --break-system-packages &>/dev/null && return 0
+
+    local install_dir="/opt/theHarvester"
+    rm -rf "$install_dir"
+    git clone --depth 1 https://github.com/laramies/theHarvester.git "$install_dir" &>/dev/null || return 1
+    (cd "$install_dir" && pip3 install -r requirements.txt --break-system-packages &>/dev/null)
+    ln -sf "$install_dir/theHarvester.py" /usr/local/bin/theharvester
+    chmod +x /usr/local/bin/theharvester
+    return 0
+}
+
+install_recon_ng() {
+    apt-get install -y recon-ng &>/dev/null && return 0
+
+    local install_dir="/opt/recon-ng"
+    rm -rf "$install_dir"
+    git clone --depth 1 https://github.com/lanmaster53/recon-ng.git "$install_dir" &>/dev/null || return 1
+    (cd "$install_dir" && pip3 install -r REQUIREMENTS --break-system-packages &>/dev/null)
+    ln -sf "$install_dir/recon-ng" /usr/local/bin/recon-ng
+    chmod +x /usr/local/bin/recon-ng
+    return 0
+}
+
+install_rustscan() {
+    local repo="RustScan/RustScan"
+    local api_url="https://api.github.com/repos/$repo/releases/latest"
+    local download_url
+    download_url=$(curl -sL "$api_url" | grep -oP '"browser_download_url":\s*"\K[^\"]+\.deb' | head -1)
+
+    if [[ -n "$download_url" ]]; then
+        local tmp_file="/tmp/rustscan.deb"
+        curl -sL "$download_url" -o "$tmp_file" && \
+        dpkg -i "$tmp_file" &>/dev/null && \
+        apt-get install -f -y &>/dev/null && \
+        rm -f "$tmp_file" && \
+        return 0
+    fi
+
+    if command -v cargo &>/dev/null; then
+        cargo install rustscan &>/dev/null && return 0
+    fi
+
+    return 1
+}
+
+try_install() {
+    local tool="$1"
+    local package="$2"
+    local method="$3"
+
+    case "$tool" in
+        wpscan) install_wpscan && return 0 ;; 
+        amass) install_amass && return 0 ;;
+        crackmapexec) install_crackmapexec && return 0 ;;
+        shodan) install_shodan && return 0 ;;
+        theharvester) install_theharvester && return 0 ;;
+        recon-ng) install_recon_ng && return 0 ;;
+        rustscan) install_rustscan && return 0 ;;
+    esac
+
+    case "$method" in
+        apt)       install_apt "$package" ;;
+        pip)       install_pip "$package" ;;
+        pipx)      install_pipx "$package" ;;
+        gem)       install_gem "$package" ;;
+        go)        install_go "$package" ;;
+        snap)      install_snap "$package" ;;
+        flatpak)   install_flatpak "$package" ;;
+        github)    install_github "$tool" "$package" ;;
+        git)       install_git "$tool" "$package" ;;
+        script)    install_script "$tool" "$package" ;;
+        *)         return 1 ;;
+    esac
+}
+
 install_tool() {
     local tool="$1"
-    local method="$2"
-    
-    # Skip if already installed
-    if is_tool_installed "$tool"; then
+    local info="${TOOLS[$tool]:-}"
+
+    if [[ -z "$info" ]]; then
+        log_warning "Unknown tool: $tool"
+        SKIPPED_TOOLS+=("$tool:unknown")
+        return 0
+    fi
+
+    if check_tool_installed "$tool"; then
         echo -e "    ${C_GREEN}✓${C_RESET} $tool ${C_SHADOW}(already installed)${C_RESET}"
         return 0
     fi
-    
+
     echo -ne "    ${C_CYAN}○${C_RESET} Installing $tool..."
-    
-    case "$method" in
-        apt)
-            if apt install -y "$tool" &>/dev/null; then
-                echo -e "\r    ${C_GREEN}✓${C_RESET} $tool"
-            else
-                echo -e "\r    ${C_RED}✗${C_RESET} $tool ${C_SHADOW}(apt failed)${C_RESET}"
-            fi
-            ;;
-        pip)
-            if pip3 install "$tool" &>/dev/null; then
-                echo -e "\r    ${C_GREEN}✓${C_RESET} $tool"
-            else
-                echo -e "\r    ${C_RED}✗${C_RESET} $tool ${C_SHADOW}(pip failed)${C_RESET}"
-            fi
-            ;;
-        pipx)
-            if pipx install "$tool" &>/dev/null; then
-                echo -e "\r    ${C_GREEN}✓${C_RESET} $tool"
-            else
-                echo -e "\r    ${C_RED}✗${C_RESET} $tool ${C_SHADOW}(pipx failed)${C_RESET}"
-            fi
-            ;;
-        gem)
-            if gem install "$tool" &>/dev/null; then
-                echo -e "\r    ${C_GREEN}✓${C_RESET} $tool"
-            else
-                echo -e "\r    ${C_RED}✗${C_RESET} $tool ${C_SHADOW}(gem failed)${C_RESET}"
-            fi
-            ;;
-        go:*)
-            local pkg="${method#go:}"
-            if go install "$pkg" &>/dev/null; then
-                echo -e "\r    ${C_GREEN}✓${C_RESET} $tool"
-            else
-                echo -e "\r    ${C_RED}✗${C_RESET} $tool ${C_SHADOW}(go failed)${C_RESET}"
-            fi
-            ;;
-        git:*)
-            local repo="${method#git:}"
-            local dest="/opt/$tool"
-            if git clone --depth 1 "$repo" "$dest" &>/dev/null; then
-                [[ -f "$dest/$tool" ]] && ln -sf "$dest/$tool" "/usr/local/bin/$tool"
-                [[ -f "$dest/${tool}.sh" ]] && ln -sf "$dest/${tool}.sh" "/usr/local/bin/$tool"
-                echo -e "\r    ${C_GREEN}✓${C_RESET} $tool"
-            else
-                echo -e "\r    ${C_RED}✗${C_RESET} $tool ${C_SHADOW}(git failed)${C_RESET}"
-            fi
-            ;;
-        github:*)
-            local repo="${method#github:}"
-            local latest_url="https://api.github.com/repos/$repo/releases/latest"
-            local deb_url
-            deb_url=$(curl -s "$latest_url" | grep -o "https://.*amd64.deb" | head -1)
-            if [[ -n "$deb_url" ]]; then
-                if wget -q "$deb_url" -O "/tmp/${tool}.deb"; then
-                    dpkg -i "/tmp/${tool}.deb" &>/dev/null || apt install -f -y &>/dev/null
-                    rm -f "/tmp/${tool}.deb"
-                    echo -e "\r    ${C_GREEN}✓${C_RESET} $tool"
-                else
-                    echo -e "\r    ${C_RED}✗${C_RESET} $tool ${C_SHADOW}(download failed)${C_RESET}"
-                fi
-            else
-                echo -e "\r    ${C_RED}✗${C_RESET} $tool ${C_SHADOW}(no release found)${C_RESET}"
-            fi
-            ;;
-        *)
-            echo -e "\r    ${C_RED}✗${C_RESET} $tool ${C_SHADOW}(unknown method: $method)${C_RESET}"
-            ;;
-    esac
+
+    local binary package primary_method fallback_method
+    binary=$(echo "$info" | cut -d: -f1)
+    package=$(echo "$info" | cut -d: -f2)
+    primary_method=$(echo "$info" | cut -d: -f3)
+    fallback_method=$(echo "$info" | cut -d: -f4)
+
+    if try_install "$tool" "$package" "$primary_method"; then
+        echo -e "\r    ${C_GREEN}✓${C_RESET} $tool                    "
+        return 0
+    fi
+    handle_error "$tool" "$primary_method" "$?"
+
+    if [[ -n "$fallback_method" && "$fallback_method" != "-" ]]; then
+        log_verbose "Primary failed, trying fallback: $fallback_method"
+        if try_install "$tool" "$package" "$fallback_method"; then
+            echo -e "\r    ${C_GREEN}✓${C_RESET} $tool ${C_SHADOW}(fallback)${C_RESET}          "
+            return 0
+        fi
+        handle_error "$tool" "$fallback_method" "$?"
+    fi
+
+    for method in apt snap flatpak pip pipx gem go github; do
+        [[ "$method" == "$primary_method" ]] && continue
+        [[ "$method" == "$fallback_method" ]] && continue
+        if try_install "$tool" "$package" "$method" 2>/dev/null; then
+            echo -e "\r    ${C_GREEN}✓${C_RESET} $tool ${C_SHADOW}($method)${C_RESET}          "
+            return 0
+        fi
+    done
+
+    echo -e "\r    ${C_RED}✗${C_RESET} $tool ${C_SHADOW}(all methods failed)${C_RESET}"
+    FAILED_TOOLS+=("$tool")
+    ((INSTALL_ERRORS++))
+    return 0
 }
 
-# Silent install helper using category methods
-install_tool_silent() {
-    local tool="$1"
-    local method
-    method=$(method_for_tool "$tool") || return 1
+show_install_summary() {
+    echo
+    echo -e "    ${C_CYAN}═══════════════════════════════════════════════════════════════${C_RESET}"
+    echo -e "    ${C_RED}                    INSTALLATION SUMMARY${C_RESET}"
+    echo -e "    ${C_CYAN}═══════════════════════════════════════════════════════════════${C_RESET}"
+    echo
 
-    case "$method" in
-        apt) run_privileged "DEBIAN_FRONTEND=noninteractive apt install -y $tool" &>/dev/null ;;
-        pip) pip3 install "$tool" --user --quiet &>/dev/null ;;
-        github) install_from_github "$tool" "$tool" &>/dev/null ;;
-        go) GO111MODULE=on go install "$tool" &>/dev/null ;;
-        *) return 1 ;;
-    esac
-    is_tool_installed "$tool"
+    local total_attempted=${#INSTALL_ATTEMPTED[@]}
+    local total_success=$((total_attempted - ${#FAILED_TOOLS[@]}))
+
+    echo -e "    ${C_GREEN}✓ Successful:${C_RESET} $total_success"
+    echo -e "    ${C_RED}✗ Failed:${C_RESET}     ${#FAILED_TOOLS[@]}"
+    echo -e "    ${C_SHADOW}○ Skipped:${C_RESET}    ${#SKIPPED_TOOLS[@]}"
+    echo
+
+    if [[ ${#FAILED_TOOLS[@]} -gt 0 ]]; then
+        echo -e "    ${C_RED}Failed tools:${C_RESET}"
+        for tool in "${FAILED_TOOLS[@]}"; do
+            echo -e "      ${C_RED}•${C_RESET} $tool"
+        done
+        echo
+        echo -e "    ${C_SHADOW}Try installing manually or check network connection.${C_RESET}"
+        echo -e "    ${C_SHADOW}Some tools require Kali/Parrot repos or specific dependencies.${C_RESET}"
+    fi
+
+    echo
 }
 
-# Install category
 install_category() {
     local category="$1"
-    # shellcheck disable=SC2178
-    local -n tools_ref="TOOLS_${category^^}"
-    
-    echo
-    echo -e "    ${C_BLUE}━━━ Installing ${category^^} tools ━━━${C_RESET}"
-    echo
-    
-    for tool in "${!tools_ref[@]}"; do
-        install_tool "$tool" "${tools_ref[$tool]}"
-    done
-}
+    local tools="${CATEGORIES[$category]:-}"
 
-# Install all
-install_all() {
-    log_info "Installing ALL tools (~3-5GB, 15-30 minutes)"
-    echo
-    
-    apt update
-    
-    install_category "scanning"
-    install_category "dns"
-    install_category "ssl"
-    install_category "wifi"
-    install_category "web"
-    install_category "exploit"
-    install_category "traffic"
-    install_category "osint"
-    install_category "creds"
-    install_category "post"
-    install_category "wordlists"
-    
-    if [[ -f /usr/share/wordlists/rockyou.txt.gz ]]; then
-        log_info "Extracting rockyou.txt..."
-        gunzip -k /usr/share/wordlists/rockyou.txt.gz 2>/dev/null || true
+    if [[ -z "$tools" ]]; then
+        log_error "Unknown category: $category"
+        return 1
     fi
-    
+
     echo
-    log_success "Installation complete!"
+    echo -e "    ${C_CYAN}━━━ Installing ${category^^} tools ━━━${C_RESET}"
+
+    FAILED_TOOLS=()
+    SKIPPED_TOOLS=()
+    INSTALL_ATTEMPTED=()
+
+    for tool in $tools; do
+        INSTALL_ATTEMPTED+=("$tool")
+        install_tool "$tool" || true
+    done
+
+    ALL_FAILED_TOOLS+=("${FAILED_TOOLS[@]}")
+    ALL_SKIPPED_TOOLS+=("${SKIPPED_TOOLS[@]}")
+    ALL_INSTALL_ATTEMPTED+=("${INSTALL_ATTEMPTED[@]}")
+
+    if [[ ${#FAILED_TOOLS[@]} -gt 0 ]]; then
+        echo -e "    ${C_YELLOW}⚠${C_RESET} ${#FAILED_TOOLS[@]} tool(s) failed in ${category^^}"
+    fi
+
+    return 0
 }
 
-# Install essentials only
+install_all() {
+    local all_failed=()
+    local all_skipped=()
+    local all_attempted=()
+
+    for category in scanning wireless web exploit osint creds traffic; do
+        install_category "$category" || true
+        all_failed+=("${FAILED_TOOLS[@]}")
+        all_skipped+=("${SKIPPED_TOOLS[@]}")
+        all_attempted+=("${INSTALL_ATTEMPTED[@]}")
+        FAILED_TOOLS=()
+        SKIPPED_TOOLS=()
+        INSTALL_ATTEMPTED=()
+    done
+
+    FAILED_TOOLS=("${all_failed[@]}")
+    SKIPPED_TOOLS=("${all_skipped[@]}")
+    INSTALL_ATTEMPTED=("${all_attempted[@]}")
+
+    show_install_summary
+}
+
 install_essentials() {
-    log_info "Installing essential tools only..."
-    echo
-    
-    apt update
-    apt install -y nmap masscan aircrack-ng hashcat john hydra nikto gobuster \
-        sqlmap tcpdump wireshark wordlists seclists netdiscover arp-scan
-    
-    [[ -f /usr/share/wordlists/rockyou.txt.gz ]] && gunzip -k /usr/share/wordlists/rockyou.txt.gz 2>/dev/null
-    
-    echo
-    log_success "Essential tools installed!"
+    local essentials="nmap masscan aircrack-ng hashcat john hydra nikto gobuster sqlmap tcpdump wireshark netdiscover arp-scan"
+    CATEGORIES[essentials]="$essentials"
+    install_category "essentials"
+    show_install_summary
 }
 
-# Show status
 show_status() {
     echo
     echo -e "    ${C_BLUE}━━━ ARSENAL STATUS ━━━${C_RESET}"
     echo
-    
+
     local installed=0
     local missing=0
-    
-    for category in SCANNING DNS SSL WIFI WEB EXPLOIT TRAFFIC OSINT CREDS POST; do
-        # shellcheck disable=SC2178
-        local -n tools_ref="TOOLS_${category}"
-        echo -e "    ${C_CYAN}${category}:${C_RESET}"
+
+    for category in "${!CATEGORIES[@]}"; do
+        echo -e "    ${C_CYAN}${category^^}:${C_RESET}"
         echo -n "    "
-        for tool in "${!tools_ref[@]}"; do
-            if is_tool_installed "$tool"; then
+        for tool in ${CATEGORIES[$category]}; do
+            if check_tool_installed "$tool"; then
                 echo -ne "${C_GREEN}✓${C_RESET}${tool}  "
                 ((installed++))
             else
@@ -414,12 +616,11 @@ show_status() {
         done
         echo
     done
-    
+
     echo
     echo -e "    ${C_GREEN}Installed: $installed${C_RESET}  ${C_RED}Missing: $missing${C_RESET}"
 }
 
-# Interactive menu
 show_menu() {
     while true; do
         clear
@@ -437,34 +638,35 @@ show_menu() {
         echo -e "    ${C_SHADOW}[6]${C_RESET} Install EXPLOIT        ${C_SHADOW}metasploit, searchsploit...${C_RESET}"
         echo -e "    ${C_SHADOW}[7]${C_RESET} Install CREDENTIALS    ${C_SHADOW}hashcat, john, hydra...${C_RESET}"
         echo -e "    ${C_SHADOW}[8]${C_RESET} Install OSINT          ${C_SHADOW}theharvester, recon-ng...${C_RESET}"
+        echo -e "    ${C_SHADOW}[9]${C_RESET} Install TRAFFIC        ${C_SHADOW}tcpdump, wireshark...${C_RESET}"
         echo
         echo -e "    ${C_SHADOW}[S]${C_RESET} Show status"
         echo -e "    ${C_SHADOW}[Q]${C_RESET} Quit"
         echo
         echo -ne "    ${C_CYAN}▶${C_RESET} "
         read -r choice
-        
+
         case "$choice" in
-            1) install_all ;;
-            2) install_essentials ;;
-            3) install_category "scanning" ;;
-            4) install_category "wifi" ;;
-            5) install_category "web" ;;
-            6) install_category "exploit" ;;
-            7) install_category "creds" ;;
-            8) install_category "osint" ;;
+            1) preflight_checks; install_all ;;
+            2) preflight_checks; install_essentials ;;
+            3) preflight_checks; install_category "scanning"; show_install_summary ;;
+            4) preflight_checks; install_category "wireless"; show_install_summary ;;
+            5) preflight_checks; install_category "web"; show_install_summary ;;
+            6) preflight_checks; install_category "exploit"; show_install_summary ;;
+            7) preflight_checks; install_category "creds"; show_install_summary ;;
+            8) preflight_checks; install_category "osint"; show_install_summary ;;
+            9) preflight_checks; install_category "traffic"; show_install_summary ;;
             s|S) show_status ;;
             q|Q) exit 0 ;;
             *) log_error "Invalid option" ;;
         esac
-        
+
         echo
         echo -ne "    ${C_SHADOW}Press Enter to continue...${C_RESET}"
         read -r
     done
 }
 
-# CLI handling
 show_usage() {
     echo "NETREAPER Arsenal Installer v${VERSION}"
     echo
@@ -479,27 +681,71 @@ show_usage() {
     echo "    exploit      Install exploit tools"
     echo "    creds        Install credential tools"
     echo "    osint        Install OSINT tools"
+    echo "    traffic      Install traffic tools"
     echo "    status       Show installation status"
     echo "    menu         Interactive menu (default)"
     echo
 }
 
 main() {
-    require_root
-    
     case "${1:-menu}" in
-        all)        apt update; install_all ;;
-        essentials) apt update; install_essentials ;;
-        scanning)   apt update; install_category "scanning" ;;
-        wireless)   apt update; install_category "wifi" ;;
-        web)        apt update; install_category "web" ;;
-        exploit)    apt update; install_category "exploit" ;;
-        creds)      apt update; install_category "creds" ;;
-        osint)      apt update; install_category "osint" ;;
-        status)     show_status ;;
-        menu|"")   show_menu ;;
-        -h|--help)  show_usage ;;
-        *)          log_error "Unknown command: $1"; show_usage; exit 1 ;;
+        all)
+            preflight_checks
+            install_all
+            ;;
+        essentials)
+            preflight_checks
+            install_essentials
+            ;;
+        scanning)
+            preflight_checks
+            install_category "scanning"
+            show_install_summary
+            ;;
+        wireless)
+            preflight_checks
+            install_category "wireless"
+            show_install_summary
+            ;;
+        web)
+            preflight_checks
+            install_category "web"
+            show_install_summary
+            ;;
+        exploit)
+            preflight_checks
+            install_category "exploit"
+            show_install_summary
+            ;;
+        creds)
+            preflight_checks
+            install_category "creds"
+            show_install_summary
+            ;;
+        osint)
+            preflight_checks
+            install_category "osint"
+            show_install_summary
+            ;;
+        traffic)
+            preflight_checks
+            install_category "traffic"
+            show_install_summary
+            ;;
+        status)
+            show_status
+            ;;
+        menu|"")
+            show_menu
+            ;;
+        -h|--help)
+            show_usage
+            ;;
+        *)
+            log_error "Unknown command: $1"
+            show_usage
+            exit 1
+            ;;
     esac
 }
 
