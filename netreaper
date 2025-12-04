@@ -11,7 +11,7 @@
 #    "Some tools scan. Some tools attack. I do both."
 #
 #    Author:  Network & Firewall Technicians (NFT)
-#    Version: 3.1.0 (Retribution)
+#    Version: 4.0.0 (Phantom)
 #    License: MIT
 #    
 #    What happens when aircrack-ng and wifite have a baby,
@@ -24,8 +24,8 @@ set -uo pipefail
 QUIET=0
 JSON_OUTPUT=0
 
-readonly VERSION="3.4.0"
-readonly CODENAME="Ascension"
+readonly VERSION="4.0.0"
+readonly CODENAME="Phantom"
 readonly SCRIPT_NAME="netreaper"
 # shellcheck disable=SC2034
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -77,25 +77,57 @@ log-dhcp
 address=/#/192.168.1.1'
 
 #═══════════════════════════════════════════════════════════════════════════════
-# COLOR PALETTE - Blood, Venom, and Ghost
+# COLOR PALETTE - Blue/Red Team
 #═══════════════════════════════════════════════════════════════════════════════
 
 if [[ -t 1 ]] && [[ "${NO_COLOR:-}" != "1" ]]; then
-    readonly C_BLOOD=$'\033[38;5;196m'
-    readonly C_VENOM=$'\033[38;5;46m'
-    readonly C_GHOST=$'\033[38;5;51m'
-    readonly C_SKULL=$'\033[38;5;231m'
-    readonly C_SHADOW=$'\033[38;5;240m'
-    readonly C_FIRE=$'\033[38;5;208m'
-    readonly C_PURPLE=$'\033[38;5;129m'
-    readonly C_GOLD=$'\033[38;5;220m'
     readonly C_RESET=$'\033[0m'
     readonly C_BOLD=$'\033[1m'
     readonly C_DIM=$'\033[2m'
+
+    readonly C_RED=$'\033[38;5;196m'
+    readonly C_BLOOD=$'\033[38;5;124m'
+    readonly C_FIRE=$'\033[38;5;202m'
+
+    readonly C_BLUE=$'\033[38;5;39m'
+    readonly C_CYAN=$'\033[38;5;51m'
+    readonly C_STEEL=$'\033[38;5;67m'
+
+    readonly C_GREEN=$'\033[38;5;46m'
+    readonly C_YELLOW=$'\033[38;5;226m'
+    readonly C_PURPLE=$'\033[38;5;135m'
+    readonly C_ORANGE=$'\033[38;5;208m'
+
+    readonly C_BORDER=$'\033[38;5;240m'
+    readonly C_SHADOW=$'\033[38;5;244m'
+    readonly C_GHOST=$'\033[38;5;250m'
+    readonly C_WHITE=$'\033[38;5;255m'
 else
-    readonly C_BLOOD="" C_VENOM="" C_GHOST="" C_SKULL="" C_SHADOW=""
-    readonly C_FIRE="" C_PURPLE="" C_GOLD="" C_RESET="" C_BOLD="" C_DIM=""
+    readonly C_RESET="" C_BOLD="" C_DIM=""
+    readonly C_RED="" C_BLOOD="" C_FIRE=""
+    readonly C_BLUE="" C_CYAN="" C_STEEL=""
+    readonly C_GREEN="" C_YELLOW="" C_PURPLE="" C_ORANGE=""
+    readonly C_BORDER="" C_SHADOW="" C_GHOST="" C_WHITE=""
 fi
+
+# shellcheck disable=SC2034
+readonly C_SUCCESS="${C_GREEN}"
+# shellcheck disable=SC2034
+readonly C_ERROR="${C_RED}"
+# shellcheck disable=SC2034
+readonly C_WARNING="${C_YELLOW}"
+# shellcheck disable=SC2034
+readonly C_INFO="${C_CYAN}"
+# shellcheck disable=SC2034
+readonly C_PROMPT="${C_BLUE}"
+
+# Legacy aliases to preserve existing styling
+# shellcheck disable=SC2034
+readonly C_VENOM="${C_GREEN}"
+# shellcheck disable=SC2034
+readonly C_SKULL="${C_WHITE}"
+# shellcheck disable=SC2034
+readonly C_GOLD="${C_ORANGE}"
 
 #═══════════════════════════════════════════════════════════════════════════════
 # TOOL ARSENAL - 60+ Capabilities
@@ -288,6 +320,27 @@ load_config() {
     DEFAULT_THEME="${DEFAULT_THEME:-default}"
 }
 
+cmd_config() {
+    local action="${1:-edit}"
+    ensure_state_dirs
+
+    case "$action" in
+        view)
+            if [[ -f "$CONFIG_FILE" ]]; then
+                log_info "Configuration (${CONFIG_FILE}):"
+                sed 's/^/    /' "$CONFIG_FILE"
+            else
+                log_warning "No config found at ${CONFIG_FILE}"
+            fi
+            ;;
+        edit|*)
+            local editor="${EDITOR:-nano}"
+            log_info "Opening config with ${editor}"
+            "$editor" "$CONFIG_FILE"
+            ;;
+    esac
+}
+
 record_history() {
     local target="${1:-}"
     [[ -z "$target" ]] && return
@@ -408,7 +461,7 @@ profile_load() {
 
 profile_list() {
     ensure_state_dirs
-    ls "$PROFILES_DIR"/*.profile 2>/dev/null | sed 's#.*/##;s/\.profile$//' || true
+    find "$PROFILES_DIR" -maxdepth 1 -type f -name "*.profile" -print 2>/dev/null | sed 's#.*/##;s/\.profile$//' || true
 }
 
 discover_targets() {
@@ -420,7 +473,8 @@ discover_targets() {
         subnet="${subnet:-192.168.1.0/24}"
     fi
     log_info "Discovering hosts on $subnet"
-    local tmp="${TMP_DIR}/discover_$(date +%s).log"
+    local tmp
+    tmp="${TMP_DIR}/discover_$(date +%s).log"
     mkdir -p "$TMP_DIR"
     nmap -sn "$subnet" | tee "$tmp"
     mapfile -t hosts < <(grep "Nmap scan report for" "$tmp" | awk '{print $5}' | sed 's/(//;s/)//')
@@ -607,21 +661,19 @@ check_for_update() {
 
 show_banner() {
     clear
-    echo
-    echo -e "${C_BLOOD}"
-    cat << 'BANNER'
-    ███╗   ██╗███████╗████████╗██████╗ ███████╗ █████╗ ██████╗ ███████╗██████╗ 
-    ████╗  ██║██╔════╝╚══██╔══╝██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔════╝██╔══██╗
-    ██╔██╗ ██║█████╗     ██║   ██████╔╝█████╗  ███████║██████╔╝█████╗  ██████╔╝
-    ██║╚██╗██║██╔══╝     ██║   ██╔══██╗██╔══╝  ██╔══██║██╔═══╝ ██╔══╝  ██╔══██╗
-    ██║ ╚████║███████╗   ██║   ██║  ██║███████╗██║  ██║██║     ███████╗██║  ██║
-    ╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝
-BANNER
-    echo -e "${C_RESET}"
-    echo -e "    ${C_SHADOW}═══════════════════════════════════════════════════════════════════════${C_RESET}"
-    echo -e "    ${C_SHADOW}║${C_RESET} ${C_GHOST}\"Some tools scan. Some tools attack.${C_FIRE} I do both.${C_GHOST}\"${C_RESET}                  ${C_SHADOW}║${C_RESET}"
-    echo -e "    ${C_SHADOW}═══════════════════════════════════════════════════════════════════════${C_RESET}"
-    echo -e "                        ${C_VENOM}[ v${VERSION} ${C_SHADOW}//${C_VENOM} ${CODENAME} ${C_SHADOW}//${C_VENOM} 60+ Tools ]${C_RESET}"
+    cat << 'EOF'
+
+    ██████   █████ ████████ ██████  ████████  █████  ██████  ████████ ██████  
+    ██   ██ ██     ██    ██ ██   ██ ██       ██   ██ ██   ██ ██       ██   ██ 
+    ██   ██ █████  ██    ██ ██████  █████    ███████ ██████  █████    ██████  
+    ██   ██ ██     ██    ██ ██   ██ ██       ██   ██ ██      ██       ██   ██ 
+    ██████  ██████ ██    ██ ██   ██ ████████ ██   ██ ██      ████████ ██   ██ 
+
+EOF
+    echo -e "    ${C_BORDER}═══════════════════════════════════════════════════════════════════${C_RESET}"
+    echo -e "    ${C_SHADOW}║${C_RESET} ${C_RED}\"Some tools scan. Some tools attack.${C_RESET} ${C_CYAN}I do both.\"${C_RESET}              ${C_SHADOW}║${C_RESET}"
+    echo -e "    ${C_BORDER}═══════════════════════════════════════════════════════════════════${C_RESET}"
+    echo -e "                    ${C_SHADOW}[${C_RESET} ${C_RED}v${VERSION}${C_RESET} ${C_SHADOW}//${C_RESET} ${C_CYAN}${CODENAME}${C_RESET} ${C_SHADOW}//${C_RESET} ${C_GREEN}70+ Tools${C_RESET} ${C_SHADOW}]${C_RESET}"
     echo
 }
 
@@ -701,12 +753,61 @@ check_legal() {
 # UTILITIES
 #═══════════════════════════════════════════════════════════════════════════════
 
-require_root() {
-    if [[ $EUID -ne 0 ]]; then
-        log_error "This operation requires root privileges"
-        echo -e "    ${C_SHADOW}Run: sudo $SCRIPT_NAME ...${C_RESET}"
+is_root() {
+    [[ $EUID -eq 0 ]]
+}
+
+run_with_sudo() {
+    local func_name="${1:-}"
+    shift || true
+
+    if [[ -z "$func_name" ]]; then
+        log_error "No function specified for sudo wrapper"
         return 1
     fi
+
+    if is_root; then
+        "$func_name" "$@"
+        return $?
+    fi
+
+    log_warning "This operation requires root privileges"
+    echo -ne "    ${C_PROMPT}Run with sudo? [Y/n]: ${C_RESET}"
+    read -r confirm
+    if [[ "${confirm,,}" == "n" ]]; then
+        log_info "Operation cancelled"
+        return 1
+    fi
+
+    local args_quoted
+    args_quoted=$(printf ' %q' "$@")
+
+    local env_decls=""
+    local vars_to_export=(TARGET OUTPUT_FILE LOG_DIR OUTPUT_DIR LOOT_DIR CONFIG_DIR CONFIG_FILE BASE_LOG_DIR BASE_OUTPUT_DIR BASE_LOOT_DIR SESSION_NAME CURRENT_SESSION DEFAULT_INTERFACE DEFAULT_WORDLIST TMP_DIR QUIET JSON_OUTPUT NO_COLOR C_RESET C_BOLD C_DIM C_RED C_BLOOD C_FIRE C_BLUE C_CYAN C_STEEL C_GREEN C_YELLOW C_PURPLE C_ORANGE C_BORDER C_SHADOW C_GHOST C_WHITE C_SUCCESS C_ERROR C_WARNING C_INFO C_PROMPT C_VENOM C_SKULL C_GOLD)
+    for var in "${vars_to_export[@]}"; do
+        if declare -p "$var" &>/dev/null; then
+            env_decls+=$(declare -p "$var")
+            env_decls+=$'\n'
+        fi
+    done
+
+    sudo -E bash -c "$(declare -f); ${env_decls}set -uo pipefail; ${func_name}${args_quoted}"
+}
+
+require_root() {
+    if is_root; then
+        return 0
+    fi
+
+    log_error "This operation requires root privileges"
+    echo -ne "    ${C_PROMPT}Elevate with sudo? [Y/n]: ${C_RESET}"
+    read -r confirm
+    if [[ "${confirm,,}" != "n" ]]; then
+        log_info "Re-run with sudo to continue."
+    else
+        log_info "Operation cancelled"
+    fi
+    return 1
 }
 
 check_tool() {
@@ -1005,6 +1106,13 @@ session_list() {
     operation_summary "Session list" "$start_ms" "$SESSIONS_DIR"
 }
 
+exit_gracefully() {
+    echo
+    typewriter "    The reaper sleeps... for now." 0.02
+    echo
+    exit 0
+}
+
 #═══════════════════════════════════════════════════════════════════════════════
 # MAIN MENU
 #═══════════════════════════════════════════════════════════════════════════════
@@ -1013,95 +1121,300 @@ main_menu() {
     while true; do
         show_banner
         
-        echo -e "    ${C_SKULL}┌─────────────────────────────────────────────────────────────────────┐${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}                         ${C_FIRE}◤ ARSENAL ◢${C_RESET}                              ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}├─────────────────────────────────────────────────────────────────────┤${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_BLOOD}⚔ RECON${C_RESET}                          ${C_VENOM}🛡 WIRELESS${C_RESET}                      ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_SHADOW}─────────────────────${C_RESET}           ${C_SHADOW}─────────────────────${C_RESET}           ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[1]${C_RESET} Port Scanning              ${C_GHOST}[7]${C_RESET}  WiFi Recon                   ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[2]${C_RESET} Network Discovery          ${C_GHOST}[8]${C_RESET}  Deauth Attack                ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[3]${C_RESET} DNS Enumeration            ${C_GHOST}[9]${C_RESET}  WPS Attack                   ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[4]${C_RESET} SSL/TLS Analysis           ${C_GHOST}[10]${C_RESET} Handshake Capture            ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[5]${C_RESET} SNMP Sweep                 ${C_GHOST}[11]${C_RESET} Crack Handshake              ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[6]${C_RESET} SMB Enumeration            ${C_GHOST}[12]${C_RESET} Evil Twin Attack             ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}                               ${C_GHOST}[13]${C_RESET} Monitor Mode                 ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}                               ${C_GHOST}[14]${C_RESET} Channel Hopper               ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_BLOOD}💀 EXPLOIT${C_RESET}                       ${C_FIRE}🔥 STRESS${C_RESET}                        ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_SHADOW}─────────────────────${C_RESET}           ${C_SHADOW}─────────────────────${C_RESET}           ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[15]${C_RESET} Web Attacks               ${C_GHOST}[19]${C_RESET} Bandwidth Test (iperf)       ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[16]${C_RESET} SQL Injection             ${C_GHOST}[20]${C_RESET} Packet Flood (hping3)        ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[17]${C_RESET} Metasploit Console        ${C_GHOST}[21]${C_RESET} HTTP Load Test               ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[18]${C_RESET} Exploit Search            ${C_GHOST}[22]${C_RESET} Network Impairment           ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_PURPLE}🔧 TOOLS${C_RESET}                         ${C_GHOST}📊 INTEL${C_RESET}                        ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_SHADOW}─────────────────────${C_RESET}           ${C_SHADOW}─────────────────────${C_RESET}           ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[23]${C_RESET} Install Arsenal           ${C_GHOST}[26]${C_RESET} OSINT Recon                  ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[24]${C_RESET} Tool Status               ${C_GHOST}[27]${C_RESET} Generate Report              ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[25]${C_RESET} View Logs                 ${C_GHOST}[28]${C_RESET} Traffic Capture              ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[29]${C_RESET} Credential Attacks                                         ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[30]${C_RESET} Post-Exploitation                                        ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[S]${C_RESET} Session Management                                             ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}              ${C_BLOOD}[Q]${C_RESET} Quit    ${C_GHOST}[H]${C_RESET} Help    ${C_VENOM}[R]${C_RESET} Run Direct              ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
-        echo -e "    ${C_SKULL}└─────────────────────────────────────────────────────────────────────┘${C_RESET}"
+        echo -e "    ${C_BORDER}╔═══════════════════════════════════════════════════════════════════╗${C_RESET}"
+        echo -e "    ${C_BORDER}║${C_RESET}                         ${C_FIRE}◤ ARSENAL ◢${C_RESET}                              ${C_BORDER}║${C_RESET}"
+        echo -e "    ${C_BORDER}╠═══════════════════════════════════════════════════════════════════╣${C_RESET}"
+        echo -e "    ${C_BORDER}║${C_RESET}                                                                   ${C_BORDER}║${C_RESET}"
+        echo -e "    ${C_BORDER}║${C_RESET}   ${C_CYAN}[1]${C_RESET} ${C_BLUE}🔍 RECON${C_RESET}           Scanning, discovery, enumeration        ${C_BORDER}║${C_RESET}"
+        echo -e "    ${C_BORDER}║${C_RESET}   ${C_CYAN}[2]${C_RESET} ${C_GREEN}📡 WIRELESS${C_RESET}        WiFi attacks, monitoring, cracking       ${C_BORDER}║${C_RESET}"
+        echo -e "    ${C_BORDER}║${C_RESET}   ${C_CYAN}[3]${C_RESET} ${C_RED}💀 EXPLOIT${C_RESET}         Web attacks, SQLi, Metasploit            ${C_BORDER}║${C_RESET}"
+        echo -e "    ${C_BORDER}║${C_RESET}   ${C_CYAN}[4]${C_RESET} ${C_ORANGE}🔥 STRESS${C_RESET}          Bandwidth, flooding, load testing        ${C_BORDER}║${C_RESET}"
+        echo -e "    ${C_BORDER}║${C_RESET}   ${C_CYAN}[5]${C_RESET} ${C_PURPLE}🔧 TOOLS${C_RESET}           Install arsenal, status, config          ${C_BORDER}║${C_RESET}"
+        echo -e "    ${C_BORDER}║${C_RESET}   ${C_CYAN}[6]${C_RESET} ${C_SHADOW}📊 INTEL${C_RESET}           OSINT, traffic capture, reporting        ${C_BORDER}║${C_RESET}"
+        echo -e "    ${C_BORDER}║${C_RESET}   ${C_CYAN}[7]${C_RESET} ${C_YELLOW}🔑 CREDENTIALS${C_RESET}     Hash cracking, brute force               ${C_BORDER}║${C_RESET}"
+        echo -e "    ${C_BORDER}║${C_RESET}   ${C_CYAN}[8]${C_RESET} ${C_RED}🎯 POST-EXPLOIT${C_RESET}    Lateral movement, persistence            ${C_BORDER}║${C_RESET}"
+        echo -e "    ${C_BORDER}║${C_RESET}                                                                   ${C_BORDER}║${C_RESET}"
+        echo -e "    ${C_BORDER}╠═══════════════════════════════════════════════════════════════════╣${C_RESET}"
+        echo -e "    ${C_BORDER}║${C_RESET}   ${C_GHOST}[S]${C_RESET} Sessions    ${C_GHOST}[C]${C_RESET} Config    ${C_GHOST}[H]${C_RESET} Help    ${C_RED}[Q]${C_RESET} Quit             ${C_BORDER}║${C_RESET}"
+        echo -e "    ${C_BORDER}╚═══════════════════════════════════════════════════════════════════╝${C_RESET}"
         echo
-        echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+        echo -ne "    ${C_CYAN}▶${C_RESET} "
         read -r choice
         
         case "$choice" in
-            1)  menu_port_scan ;;
-            2)  menu_discovery ;;
-            3)  menu_dns ;;
-            4)  menu_ssl ;;
-            5)  cmd_snmp_sweep ;;
-            6)  cmd_smb_enum ;;
-            7)  menu_wifi_recon ;;
-            8)  cmd_deauth ;;
-            9)  cmd_wps_attack ;;
-            10) cmd_handshake_capture ;;
-            11) menu_wifi_crack ;;
-            12) menu_evil_twin ;;
-            13) cmd_monitor_mode ;;
-            14) cmd_channel_hop ;;
-            15) menu_web ;;
-            16) cmd_sqlmap ;;
-            17) cmd_metasploit ;;
-            18) cmd_searchsploit ;;
-            19) cmd_iperf3 ;;
-            20) cmd_hping3 ;;
-            21) cmd_http_load ;;
-            22) cmd_netem ;;
-            23) cmd_install_arsenal ;;
-            24) cmd_tool_status ;;
-            25) cmd_view_logs ;;
-            26) menu_osint ;;
-            27) cmd_generate_report ;;
-            28) cmd_traffic_capture ;;
-            29) menu_creds ;;
-            30) menu_post_exploit ;;
-            q|Q) 
-                echo
-                typewriter "    The reaper sleeps... for now." 0.02
-                echo
-                exit 0 
-                ;;
-            h|H) show_help ;;
-            s|S) menu_session ;;
-            r|R) cmd_run_direct ;;
-            "") ;;
-            *)  log_error "Invalid selection: $choice" ;;
+            1)      menu_recon ;;
+            2)      menu_wireless ;;
+            3)      menu_exploit ;;
+            4)      menu_stress ;;
+            5)      menu_tools ;;
+            6)      menu_intel ;;
+            7)      menu_credentials ;;
+            8)      menu_postexploit ;;
+            s|S)    menu_session ;;
+            c|C)    cmd_config edit ;;
+            h|H)    show_help; read -r ;;
+            q|Q)    exit_gracefully ;;
+            *)      log_error "Invalid option" ;;
         esac
     done
 }
 
+
 #═══════════════════════════════════════════════════════════════════════════════
 # SUBMENUS
 #═══════════════════════════════════════════════════════════════════════════════
+
+cmd_network_discovery() {
+    get_target || return 1
+    run_netdiscover
+}
+
+cmd_dns_enum() {
+    get_target || return 1
+    run_dnsenum
+}
+
+cmd_ssl_analysis() {
+    get_target || return 1
+    run_sslscan
+}
+
+cmd_monitor_mode_enable() {
+    cmd_monitor_mode "enable"
+}
+
+cmd_monitor_mode_disable() {
+    cmd_monitor_mode "disable"
+}
+
+cmd_crack_handshake() {
+    menu_wifi_crack
+}
+
+cmd_convert_handshake() {
+    cmd_convert_hashcat
+}
+
+menu_recon() {
+    while true; do
+        clear
+        echo -e "${C_CYAN}╔═══════════════════════════════════════════════════════════════════╗${C_RESET}"
+        echo -e "${C_CYAN}║${C_RESET}                    ${C_FIRE}⚔ RECON ARSENAL ⚔${C_RESET}                           ${C_CYAN}║${C_RESET}"
+        echo -e "${C_CYAN}╠═══════════════════════════════════════════════════════════════════╣${C_RESET}"
+        echo -e "${C_CYAN}║${C_RESET}                                                                   ${C_CYAN}║${C_RESET}"
+        echo -e "${C_CYAN}║${C_RESET}   ${C_GHOST}[1]${C_RESET} Port Scan (Quick)      ${C_SHADOW}nmap -T4 -F${C_RESET}                     ${C_CYAN}║${C_RESET}"
+        echo -e "${C_CYAN}║${C_RESET}   ${C_GHOST}[2]${C_RESET} Port Scan (Full)       ${C_SHADOW}nmap -sS -sV -sC -A -p-${C_RESET}         ${C_CYAN}║${C_RESET}"
+        echo -e "${C_CYAN}║${C_RESET}   ${C_GHOST}[3]${C_RESET} Port Scan (Stealth)    ${C_SHADOW}nmap -sS -T2 -f${C_RESET}                  ${C_CYAN}║${C_RESET}"
+        echo -e "${C_CYAN}║${C_RESET}   ${C_GHOST}[4]${C_RESET} Port Scan (UDP)        ${C_SHADOW}nmap -sU --top-ports 100${C_RESET}         ${C_CYAN}║${C_RESET}"
+        echo -e "${C_CYAN}║${C_RESET}   ${C_GHOST}[5]${C_RESET} Vulnerability Scan     ${C_SHADOW}nmap --script vuln${C_RESET}               ${C_CYAN}║${C_RESET}"
+        echo -e "${C_CYAN}║${C_RESET}   ${C_GHOST}[6]${C_RESET} Network Discovery      ${C_SHADOW}netdiscover / arp-scan${C_RESET}           ${C_CYAN}║${C_RESET}"
+        echo -e "${C_CYAN}║${C_RESET}   ${C_GHOST}[7]${C_RESET} DNS Enumeration        ${C_SHADOW}dnsenum / dnsrecon${C_RESET}               ${C_CYAN}║${C_RESET}"
+        echo -e "${C_CYAN}║${C_RESET}   ${C_GHOST}[8]${C_RESET} SSL/TLS Analysis       ${C_SHADOW}sslscan / testssl${C_RESET}                ${C_CYAN}║${C_RESET}"
+        echo -e "${C_CYAN}║${C_RESET}   ${C_GHOST}[9]${C_RESET} SNMP Sweep             ${C_SHADOW}onesixtyone${C_RESET}                       ${C_CYAN}║${C_RESET}"
+        echo -e "${C_CYAN}║${C_RESET}   ${C_GHOST}[10]${C_RESET} SMB Enumeration       ${C_SHADOW}enum4linux / smbclient${C_RESET}           ${C_CYAN}║${C_RESET}"
+        echo -e "${C_CYAN}║${C_RESET}   ${C_GHOST}[11]${C_RESET} Masscan (Fast)        ${C_SHADOW}masscan --rate 10000${C_RESET}             ${C_CYAN}║${C_RESET}"
+        echo -e "${C_CYAN}║${C_RESET}                                                                   ${C_CYAN}║${C_RESET}"
+        echo -e "${C_CYAN}║${C_RESET}                      ${C_BLOOD}[B] ← Back${C_RESET}                                 ${C_CYAN}║${C_RESET}"
+        echo -e "${C_CYAN}╚═══════════════════════════════════════════════════════════════════╝${C_RESET}"
+        echo
+        echo -ne "    ${C_CYAN}▶${C_RESET} "
+        read -r choice
+        
+        case "$choice" in
+            1)  get_target && run_with_sudo run_nmap_quick ;;
+            2)  get_target && run_with_sudo run_nmap_full ;;
+            3)  get_target && run_with_sudo run_nmap_stealth ;;
+            4)  get_target && run_with_sudo run_nmap_udp ;;
+            5)  get_target && run_with_sudo run_nmap_vuln ;;
+            6)  run_with_sudo cmd_network_discovery ;;
+            7)  run_with_sudo cmd_dns_enum ;;
+            8)  run_with_sudo cmd_ssl_analysis ;;
+            9)  run_with_sudo cmd_snmp_sweep ;;
+            10) run_with_sudo cmd_smb_enum ;;
+            11) get_target && run_with_sudo run_masscan ;;
+            b|B|back|0) return ;;
+            *) log_error "Invalid option" ;;
+        esac
+        echo -e "\n    ${C_SHADOW}Press Enter to continue...${C_RESET}"
+        read -r
+    done
+}
+
+menu_wireless() {
+    while true; do
+        clear
+        echo -e "    ${C_GREEN}╔═══════════════════════════════════════════════════════════════════╗${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}                    ${C_GREEN}📡 WIRELESS ARSENAL${C_RESET}                           ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}╠═══════════════════════════════════════════════════════════════════╣${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}                                                                   ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}   ${C_SHADOW}──── Interface Control ────${C_RESET}                                  ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}   ${C_GHOST}[1]${C_RESET} Enable Monitor Mode                                        ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}   ${C_GHOST}[2]${C_RESET} Disable Monitor Mode                                       ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}   ${C_GHOST}[3]${C_RESET} Channel Hopper                                             ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}                                                                   ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}   ${C_SHADOW}──── Reconnaissance ────${C_RESET}                                      ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}   ${C_GHOST}[4]${C_RESET} WiFi Network Scan          ${C_SHADOW}airodump-ng${C_RESET}                    ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}   ${C_GHOST}[5]${C_RESET} Automated Recon            ${C_SHADOW}wifite${C_RESET}                         ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}                                                                   ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}   ${C_SHADOW}──── Attacks ────${C_RESET}                                             ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}   ${C_GHOST}[6]${C_RESET} Deauthentication Attack    ${C_SHADOW}aireplay-ng${C_RESET}                    ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}   ${C_GHOST}[7]${C_RESET} WPS Attack                 ${C_SHADOW}reaver/bully${C_RESET}                   ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}   ${C_GHOST}[8]${C_RESET} Handshake Capture          ${C_SHADOW}airodump-ng${C_RESET}                    ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}   ${C_GHOST}[9]${C_RESET} Evil Twin Attack           ${C_SHADOW}hostapd + captive${C_RESET}              ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}                                                                   ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}   ${C_SHADOW}──── Cracking ────${C_RESET}                                            ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}   ${C_GHOST}[10]${C_RESET} Crack Handshake           ${C_SHADOW}aircrack-ng/hashcat${C_RESET}            ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}   ${C_GHOST}[11]${C_RESET} Convert Handshake         ${C_SHADOW}.cap → .hc22000${C_RESET}                ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}                                                                   ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}║${C_RESET}                      ${C_RED}[B] ← Back${C_RESET}                                   ${C_GREEN}║${C_RESET}"
+        echo -e "    ${C_GREEN}╚═══════════════════════════════════════════════════════════════════╝${C_RESET}"
+        echo
+        echo -ne "    ${C_CYAN}▶${C_RESET} "
+        read -r choice
+        
+        case "$choice" in
+            1)  run_with_sudo cmd_monitor_mode_enable ;;
+            2)  run_with_sudo cmd_monitor_mode_disable ;;
+            3)  run_with_sudo cmd_channel_hop ;;
+            4)  run_with_sudo cmd_wifi_scan ;;
+            5)  run_with_sudo cmd_wifite ;;
+            6)  run_with_sudo cmd_deauth ;;
+            7)  run_with_sudo cmd_wps_attack ;;
+            8)  run_with_sudo cmd_handshake_capture ;;
+            9)  run_with_sudo menu_evil_twin ;;
+            10) cmd_crack_handshake ;;
+            11) cmd_convert_handshake ;;
+            b|B|0) return ;;
+            *) log_error "Invalid option" ;;
+        esac
+        echo -e "\n    ${C_SHADOW}Press Enter to continue...${C_RESET}"
+        read -r
+    done
+}
+
+menu_exploit() {
+    while true; do
+        clear
+        echo -e "    ${C_RED}╔═══════════════════════════════════════════════════════════════════╗${C_RESET}"
+        echo -e "    ${C_RED}║${C_RESET}                     ${C_RED}💀 EXPLOIT ARSENAL${C_RESET}                            ${C_RED}║${C_RESET}"
+        echo -e "    ${C_RED}╚═══════════════════════════════════════════════════════════════════╝${C_RESET}"
+        echo
+        echo -e "    ${C_GHOST}[1]${C_RESET} Web Attacks           ${C_SHADOW}nikto, gobuster, nuclei${C_RESET}"
+        echo -e "    ${C_GHOST}[2]${C_RESET} SQL Injection         ${C_SHADOW}sqlmap${C_RESET}"
+        echo -e "    ${C_GHOST}[3]${C_RESET} Metasploit Console    ${C_SHADOW}msfconsole${C_RESET}"
+        echo -e "    ${C_GHOST}[4]${C_RESET} Exploit Search         ${C_SHADOW}searchsploit${C_RESET}"
+        echo
+        echo -e "    ${C_GHOST}[B]${C_RESET} Back"
+        echo
+        echo -ne "    ${C_CYAN}▶${C_RESET} "
+        read -r choice
+        case "$choice" in
+            1) menu_web ;;
+            2) cmd_sqlmap ;;
+            3) cmd_metasploit ;;
+            4) cmd_searchsploit ;;
+            b|B|0) return ;;
+            *) log_error "Invalid option" ;;
+        esac
+        echo -e "\n    ${C_SHADOW}Press Enter to continue...${C_RESET}"
+        read -r
+    done
+}
+
+menu_stress() {
+    while true; do
+        clear
+        echo -e "    ${C_ORANGE}╔═══════════════════════════════════════════════════════════════════╗${C_RESET}"
+        echo -e "    ${C_ORANGE}║${C_RESET}                     ${C_ORANGE}🔥 STRESS TESTING${C_RESET}                           ${C_ORANGE}║${C_RESET}"
+        echo -e "    ${C_ORANGE}╚═══════════════════════════════════════════════════════════════════╝${C_RESET}"
+        echo
+        echo -e "    ${C_GHOST}[1]${C_RESET} Bandwidth Test         ${C_SHADOW}iperf3${C_RESET}"
+        echo -e "    ${C_GHOST}[2]${C_RESET} Packet Flood           ${C_SHADOW}hping3${C_RESET}"
+        echo -e "    ${C_GHOST}[3]${C_RESET} HTTP Load              ${C_SHADOW}ab/hey${C_RESET}"
+        echo -e "    ${C_GHOST}[4]${C_RESET} Network Impairment     ${C_SHADOW}tc netem${C_RESET}"
+        echo
+        echo -e "    ${C_GHOST}[B]${C_RESET} Back"
+        echo
+        echo -ne "    ${C_CYAN}▶${C_RESET} "
+        read -r choice
+        case "$choice" in
+            1) run_with_sudo cmd_iperf3 ;;
+            2) run_with_sudo cmd_hping3 ;;
+            3) cmd_http_load ;;
+            4) run_with_sudo cmd_netem ;;
+            b|B|0) return ;;
+            *) log_error "Invalid option" ;;
+        esac
+        echo -e "\n    ${C_SHADOW}Press Enter to continue...${C_RESET}"
+        read -r
+    done
+}
+
+menu_tools() {
+    while true; do
+        clear
+        echo -e "    ${C_PURPLE}╔═══════════════════════════════════════════════════════════════════╗${C_RESET}"
+        echo -e "    ${C_PURPLE}║${C_RESET}                      ${C_PURPLE}🔧 TOOL FORGE${C_RESET}                               ${C_PURPLE}║${C_RESET}"
+        echo -e "    ${C_PURPLE}╚═══════════════════════════════════════════════════════════════════╝${C_RESET}"
+        echo
+        echo -e "    ${C_GHOST}[1]${C_RESET} Install Arsenal        ${C_SHADOW}full toolkit${C_RESET}"
+        echo -e "    ${C_GHOST}[2]${C_RESET} Install Essentials     ${C_SHADOW}quick setup${C_RESET}"
+        echo -e "    ${C_GHOST}[3]${C_RESET} Tool Status            ${C_SHADOW}what's installed${C_RESET}"
+        echo -e "    ${C_GHOST}[4]${C_RESET} View Logs              ${C_SHADOW}latest runs${C_RESET}"
+        echo -e "    ${C_GHOST}[5]${C_RESET} Edit Config            ${C_SHADOW}preferences${C_RESET}"
+        echo
+        echo -e "    ${C_GHOST}[B]${C_RESET} Back"
+        echo
+        echo -ne "    ${C_CYAN}▶${C_RESET} "
+        read -r choice
+        case "$choice" in
+            1) run_with_sudo cmd_install_arsenal ;;
+            2) run_with_sudo cmd_install_quick ;;
+            3) cmd_tool_status ;;
+            4) cmd_view_logs ;;
+            5) cmd_config edit ;;
+            b|B|0) return ;;
+            *) log_error "Invalid option" ;;
+        esac
+        echo -e "\n    ${C_SHADOW}Press Enter to continue...${C_RESET}"
+        read -r
+    done
+}
+
+menu_intel() {
+    while true; do
+        clear
+        echo -e "    ${C_STEEL}╔═══════════════════════════════════════════════════════════════════╗${C_RESET}"
+        echo -e "    ${C_STEEL}║${C_RESET}                       ${C_STEEL}📊 INTEL SUITE${C_RESET}                              ${C_STEEL}║${C_RESET}"
+        echo -e "    ${C_STEEL}╚═══════════════════════════════════════════════════════════════════╝${C_RESET}"
+        echo
+        echo -e "    ${C_GHOST}[1]${C_RESET} OSINT Recon            ${C_SHADOW}theHarvester, recon-ng${C_RESET}"
+        echo -e "    ${C_GHOST}[2]${C_RESET} Traffic Capture        ${C_SHADOW}tcpdump/tshark${C_RESET}"
+        echo -e "    ${C_GHOST}[3]${C_RESET} Generate Report        ${C_SHADOW}session artifacts${C_RESET}"
+        echo
+        echo -e "    ${C_GHOST}[B]${C_RESET} Back"
+        echo
+        echo -ne "    ${C_CYAN}▶${C_RESET} "
+        read -r choice
+        case "$choice" in
+            1) menu_osint ;;
+            2) run_with_sudo cmd_traffic_capture ;;
+            3) cmd_generate_report ;;
+            b|B|0) return ;;
+            *) log_error "Invalid option" ;;
+        esac
+        echo -e "\n    ${C_SHADOW}Press Enter to continue...${C_RESET}"
+        read -r
+    done
+}
+
+menu_credentials() {
+    menu_creds
+}
+
+menu_postexploit() {
+    menu_post_exploit
+}
 
 menu_port_scan() {
     while true; do
@@ -1940,16 +2253,24 @@ cmd_smb_enum() {
 #═══════════════════════════════════════════════════════════════════════════════
 
 cmd_monitor_mode() {
+    local mode="${1:-}"
     require_root || return 1
     get_interface || return 1
     operation_header "WiFi monitor toggle" "$IFACE"
     
-    echo
-    echo -e "    ${C_GHOST}[1]${C_RESET} Enable monitor mode"
-    echo -e "    ${C_GHOST}[2]${C_RESET} Disable monitor mode"
-    echo
-    echo -ne "    ${C_FIRE}▶ ${C_RESET}"
-    read -r choice
+    local choice
+    if [[ "$mode" == "enable" ]]; then
+        choice=1
+    elif [[ "$mode" == "disable" ]]; then
+        choice=2
+    else
+        echo
+        echo -e "    ${C_GHOST}[1]${C_RESET} Enable monitor mode"
+        echo -e "    ${C_GHOST}[2]${C_RESET} Disable monitor mode"
+        echo
+        echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+        read -r choice
+    fi
     
     case "$choice" in
         1)
@@ -3432,6 +3753,7 @@ cmd_install_arsenal() {
     # Ensure go binaries are in PATH
     if [[ -d "$HOME/go/bin" ]]; then
         export PATH="$PATH:$HOME/go/bin"
+        # shellcheck disable=SC2016
         grep -q 'go/bin' ~/.bashrc || echo 'export PATH="$PATH:$HOME/go/bin"' >> ~/.bashrc
     fi
     

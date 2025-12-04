@@ -48,6 +48,10 @@ fi
 run_cmd "mkdir -p '$PREFIX'"
 run_cmd "cp '$TARGET_BIN' '$PREFIX/$TARGET_NAME'"
 run_cmd "chmod +x '$PREFIX/$TARGET_NAME'"
+if [[ -f "$SCRIPT_DIR/netreaper-install" ]]; then
+    run_cmd "cp '$SCRIPT_DIR/netreaper-install' '$PREFIX/netreaper-install'"
+    run_cmd "chmod +x '$PREFIX/netreaper-install'"
+fi
 
 if [[ -f "$SCRIPT_DIR/completions/netreaper.bash" ]]; then
     run_cmd "mkdir -p '$COMPDIR'"
