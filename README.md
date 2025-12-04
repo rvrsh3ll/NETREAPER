@@ -113,7 +113,7 @@ Built for red teamers, penetration testers, and security researchers who want po
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/netreaper.git
+git clone (https://github.com/Nerds489/NETREAPER.git)
 cd netreaper
 
 # Make executable and install system-wide
@@ -128,7 +128,7 @@ netreaper
 
 ```bash
 # Download directly
-wget https://raw.githubusercontent.com/yourusername/netreaper/main/netreaper
+wget https://raw.githubusercontent.com/Nerds489/netreaper/main/netreaper
 chmod +x netreaper
 
 # Run from current directory
