@@ -1,0 +1,49 @@
+name: 🔒 Security Vulnerability
+description: Report a security issue (DO NOT include sensitive details publicly)
+labels: [security]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ⚠️ **IMPORTANT**: For sensitive vulnerabilities, email security@offtrackmediaofficial.com instead!
+        
+        Only use this template for non-sensitive security improvements.
+        
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Brief description of the security concern
+      placeholder: Describe the issue without revealing exploit details
+    validations:
+      required: true
+      
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity Assessment
+      options:
+        - Low - Minor concern
+        - Medium - Potential risk
+        - High - Significant vulnerability
+        - Critical - Immediate attention needed
+    validations:
+      required: true
+      
+  - type: textarea
+    id: impact
+    attributes:
+      label: Potential Impact
+      description: What could happen if this is exploited?
+    validations:
+      required: true
+      
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: This issue does NOT contain exploit code or sensitive details
+          required: true
+        - label: I understand that critical vulnerabilities should be emailed directly
+          required: true

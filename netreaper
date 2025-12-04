@@ -11,7 +11,7 @@
 #    "Some tools scan. Some tools attack. I do both."
 #
 #    Author:  Network & Firewall Technicians (NFT)
-#    Version: 4.0.0 (Phantom)
+#    Version: 4.1.0 (Phantom)
 #    License: MIT
 #    
 #    What happens when aircrack-ng and wifite have a baby,
@@ -24,7 +24,7 @@ set -uo pipefail
 QUIET=0
 JSON_OUTPUT=0
 
-readonly VERSION="4.0.0"
+readonly VERSION="4.1.0"
 readonly CODENAME="Phantom"
 readonly SCRIPT_NAME="netreaper"
 # shellcheck disable=SC2034
@@ -661,19 +661,26 @@ check_for_update() {
 
 show_banner() {
     clear
-    cat << 'EOF'
-
-    ██████   █████ ████████ ██████  ████████  █████  ██████  ████████ ██████  
-    ██   ██ ██     ██    ██ ██   ██ ██       ██   ██ ██   ██ ██       ██   ██ 
-    ██   ██ █████  ██    ██ ██████  █████    ███████ ██████  █████    ██████  
-    ██   ██ ██     ██    ██ ██   ██ ██       ██   ██ ██      ██       ██   ██ 
-    ██████  ██████ ██    ██ ██   ██ ████████ ██   ██ ██      ████████ ██   ██ 
-
-EOF
-    echo -e "    ${C_BORDER}═══════════════════════════════════════════════════════════════════${C_RESET}"
-    echo -e "    ${C_SHADOW}║${C_RESET} ${C_RED}\"Some tools scan. Some tools attack.${C_RESET} ${C_CYAN}I do both.\"${C_RESET}              ${C_SHADOW}║${C_RESET}"
-    echo -e "    ${C_BORDER}═══════════════════════════════════════════════════════════════════${C_RESET}"
-    echo -e "                    ${C_SHADOW}[${C_RESET} ${C_RED}v${VERSION}${C_RESET} ${C_SHADOW}//${C_RESET} ${C_CYAN}${CODENAME}${C_RESET} ${C_SHADOW}//${C_RESET} ${C_GREEN}70+ Tools${C_RESET} ${C_SHADOW}]${C_RESET}"
+    echo -e "${C_RED}"
+    cat << 'BANNER'
+    
+    ╔═══════════════════════════════════════════════════════════════════════════╗
+    ║                                                                           ║
+    ║  ███╗   ██╗███████╗████████╗██████╗ ███████╗ █████╗ ██████╗ ███████╗██████╗  ║
+    ║  ████╗  ██║██╔════╝╚══██╔══╝██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔════╝██╔══██╗ ║
+    ║  ██╔██╗ ██║█████╗     ██║   ██████╔╝█████╗  ███████║██████╔╝█████╗  ██████╔╝ ║
+    ║  ██║╚██╗██║██╔══╝     ██║   ██╔══██╗██╔══╝  ██╔══██║██╔═══╝ ██╔══╝  ██╔══██╗ ║
+    ║  ██║ ╚████║███████╗   ██║   ██║  ██║███████╗██║  ██║██║     ███████╗██║  ██║ ║
+    ║  ╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝ ║
+    ║                                                                           ║
+    ╚═══════════════════════════════════════════════════════════════════════════╝
+BANNER
+    echo -e "${C_RESET}"
+    echo
+    echo -e "    ${C_BORDER}══════════════════════════════════════════════════════════════════════${C_RESET}"
+    echo -e "    ${C_SHADOW}║${C_RESET} ${C_RED}\"Some tools scan.${C_RESET} ${C_CYAN}Some tools attack.${C_RESET} ${C_GREEN}I do both.\"${C_RESET}               ${C_SHADOW}║${C_RESET}"
+    echo -e "    ${C_BORDER}══════════════════════════════════════════════════════════════════════${C_RESET}"
+    echo -e "                   ${C_SHADOW}[${C_RESET} ${C_RED}v${VERSION}${C_RESET} ${C_SHADOW}•${C_RESET} ${C_CYAN}${CODENAME}${C_RESET} ${C_SHADOW}•${C_RESET} ${C_GREEN}70+ Tools${C_RESET} ${C_SHADOW}]${C_RESET}"
     echo
 }
 

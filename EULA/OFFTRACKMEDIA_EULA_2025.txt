@@ -1,0 +1,85 @@
+OFFTRACKMEDIA STUDIOS – END-USER LICENSE AGREEMENT (EULA)
+
+Version 1.0 – Effective 9 November 2025
+ABN: 84 290 819 896
+Issued By: Legal & Compliance Division – OFFTRACKMEDIA Studios
+Governing Law: Western Australia
+
+APPLICABLE SOFTWARE: NETREAPER - Network Security & WiFi Assault Toolkit
+
+1. Purpose and Scope
+This End-User License Agreement ("EULA") governs your use of NETREAPER and all 
+associated software, source code, documentation, and digital assets (collectively, 
+the "Software") provided by OFFTRACKMEDIA Studios and Network & Firewall Technicians.
+
+By downloading, installing, or using the Software, you agree to this EULA and the 
+accompanying open-source license (Apache 2.0).
+
+2. Grant of License
+OFFTRACKMEDIA Studios grants you a perpetual, worldwide, royalty-free, non-exclusive 
+license to use, modify, and distribute the Software in accordance with the Apache 
+License 2.0 terms.
+
+No ownership of trademarks, logos, or brand identity assets is transferred. All 
+OFFTRACKMEDIA Studios and NFT trade dress, marks, and studio identifiers remain 
+the exclusive intellectual property of their respective owners.
+
+3. Permitted Uses
+- Use and modify the Software for personal, educational, or commercial purposes 
+  consistent with the Apache 2.0 license.
+- Include the NOTICE and LICENSE files in all redistributions.
+- Reference the Software in derivative works, provided OFFTRACKMEDIA Studios and 
+  Network & Firewall Technicians are credited as the original creators.
+
+4. Restrictions
+You may not:
+- Use the Software for unauthorized access to computer systems or networks
+- Misrepresent the Software or derivative works as being officially produced, 
+  endorsed, or supported by OFFTRACKMEDIA Studios or NFT
+- Remove or alter copyright notices, document IDs, or attribution headers
+- Use OFFTRACKMEDIA Studios or NFT brand elements without prior written consent
+- Deploy the Software in contexts that violate applicable laws or ethical standards
+
+5. PENETRATION TESTING DISCLAIMER
+NETREAPER is designed for authorized penetration testing and security research ONLY.
+
+BY USING THIS SOFTWARE, YOU ACKNOWLEDGE:
+- You will only test systems you have WRITTEN AUTHORIZATION to test
+- You accept FULL LEGAL RESPONSIBILITY for your actions
+- UNAUTHORIZED ACCESS IS A CRIMINAL OFFENSE in most jurisdictions
+- The developers accept NO LIABILITY for misuse
+
+6. Ownership and Intellectual Property
+All rights, title, and interest in and to the Software (excluding third-party 
+open-source components) remain with OFFTRACKMEDIA Studios and Network & Firewall 
+Technicians.
+
+Contributions to the repository are accepted under the terms of the CONTRIBUTING.md 
+file and the Apache 2.0 license.
+
+7. Disclaimer of Warranties
+The Software is provided "AS IS" without warranty of any kind, express or implied.
+OFFTRACKMEDIA Studios and NFT disclaim all warranties, including but not limited to 
+fitness for a particular purpose, merchantability, and non-infringement.
+
+8. Limitation of Liability
+In no event shall OFFTRACKMEDIA Studios, Network & Firewall Technicians, their 
+directors, employees, or affiliates be liable for any damages arising out of the 
+use or inability to use the Software.
+
+9. Compliance and Jurisdiction
+This EULA is governed by the laws of Western Australia.
+Disputes shall be resolved under the jurisdiction of Western Australian courts.
+
+10. Updates and Amendments
+OFFTRACKMEDIA Studios reserves the right to update this EULA.
+The most recent version will always be available in the repository under /EULA/.
+
+11. Contact
+For legal or compliance inquiries:
+Email: otmhr.mail@offtrackmediaofficial.com
+Division: Legal & Compliance – OFFTRACKMEDIA Studios
+
+OFFTRACKMEDIA Studios
+Network & Firewall Technicians
+"Building Empires, Not Just Brands."

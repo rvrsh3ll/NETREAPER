@@ -1,84 +1,85 @@
-# HOWTO: WiFi Multitool
+# HOWTO: NETREAPER Field Guide
 
 ## Table of Contents
 - [Overview](#overview)
-- [Preparation](#preparation)
-- [Running the Tool](#running-the-tool)
+- [Install & Prep](#install--prep)
+- [First Run](#first-run)
+- [Install the Arsenal](#install-the-arsenal)
 - [Common Workflows](#common-workflows)
-- [Advanced Scenarios](#advanced-scenarios)
-- [Integration](#integration)
-- [Logging & Reports](#logging--reports)
+- [Sessions, Config, Logs](#sessions-config-logs)
+- [Exporting Results](#exporting-results)
+- [Safety Tips](#safety-tips)
 
 ## Overview
-WiFi Multitool provides defensive monitoring, performance testing, and impairment simulation. Safety features (dry-run, confirmations, backups, rollback) are enabled by default.
+NETREAPER is a unified offensive toolkit with 70+ tools behind one interface. Use it to scan, attack, monitor, and report without juggling individual commands.
 
-## Preparation
-1. Install dependencies (Ubuntu/Debian): `sudo apt install -y aircrack-ng wireless-tools iw iperf3 hping3 apache2-utils nmap iproute2 python3-scapy`.
-2. Optional: create a Python venv and install `scapy` via pip for portability.
-3. Run `python3 wifi_main.py --self-test` to verify tools and interface detection.
+## Install & Prep
+1. Clone: `git clone https://github.com/Nerds489/NETREAPER.git && cd NETREAPER`.
+2. Install: `sudo ./install.sh` (adds `netreaper` and `netreaper-install` to PATH).
+3. Verify basics: `netreaper --version` and `netreaper status`.
+4. Recommended packages (for full wireless/graphics support): `sudo apt install aircrack-ng wireshark hashcat hydra` if your distro does not provide them via the installer.
 
-## Running the Tool
+## First Run
 ```bash
-# Interactive menu with logging
-sudo python3 wifi_main.py
-
-# Dry-run to verify commands without changes
-python3 wifi_main.py --dry-run --verbose
-
-# Quiet automation (log only)
-python3 wifi_main.py --quiet --self-test
+netreaper
 ```
+- Accept the legal disclaimer on first launch.
+- Navigate the main menu: Recon, Wireless, Exploit, Stress, Tools, Intel, Credentials, Post-Exploit.
+- Use arrow keys/number input; `q` or `Q` exits.
+
+## Install the Arsenal
+Choose what to install before heavier tasks:
+- Essentials (lean): `sudo netreaper-install essentials`
+- Full arsenal: `sudo netreaper-install all`
+- By category: `sudo netreaper-install recon`, `sudo netreaper-install wireless`, `sudo netreaper-install exploit`, `sudo netreaper-install creds`
+- Check status anytime: `netreaper status` or `sudo netreaper-install status`
 
 ## Common Workflows
-### 1) Deauth/Disassoc Watcher
+1) Quick Recon of a subnet
 ```
-Menu -> 7
-Enter duration (e.g., 300)
-Optionally enter channel
+netreaper scan 192.168.1.0/24 --quick
 ```
-- Requires monitor mode; services are suspended and restored automatically.
-- Outputs: `deauth_watch_<session>.json` with BSSID counters.
+- Uses nmap quick profile. Add `--vuln` for vuln scripts or run from menu [1] Recon.
 
-### 2) Airtime Audit
+2) Full Recon + Service/Vuln sweep
 ```
-Menu -> 9
+netreaper scan 10.0.0.5 --full --vuln
 ```
-- Uses `iw survey dump` to compute busy/rx/tx percentages per channel.
-- Outputs: `airtime_audit_<session>.json`.
+- Runs a comprehensive TCP scan with version detection and common NSE vulns.
 
-### 3) iperf3 Multi-Stream Load
+3) Wireless handshake capture and crack
 ```
-Menu -> 10
-Provide server IP, duration, streams, and optionally UDP bandwidth.
+netreaper wifi --monitor wlan0
+netreaper crack handshake.cap --hashcat
 ```
-- Outputs: `iperf3_multistream_<session>.txt`.
+- Monitor mode is started/stopped automatically; outputs go to `~/.netreaper/output/`.
 
-### 4) tc/netem Impairment
-```
-Menu -> 13
-Select interface, delay/jitter/loss values.
-Confirm when prompted.
-```
-- Backup and rollback helpers restore services if interrupted.
-- Clear with `tc qdisc del dev <iface> root` (also prompted in-menu).
+4) Credential brute force (SSH/HTTP)
+- Menu: Credentials -> Hydra/Medusa. Supply target, service, user/wordlists; NETREAPER builds the command and logs output.
 
-### 5) Summaries
+5) Stress/throughput test
+- Menu: Stress -> iperf3 for bandwidth testing or HTTP Load for ab-based tests. Use the guided prompts for duration, streams, and concurrency.
+
+6) Session management
 ```
-Menu -> 15
+netreaper session start
+netreaper session resume <name>
+netreaper session export
 ```
-- Aggregates iperf3/ab/hping3 outputs into `summary_<session>.csv` and `.md`.
+- Sessions keep targets, outputs, and state across runs.
 
-## Advanced Scenarios
-- **netem + iperf3**: Menu -> 14 applies impairment then runs multi-stream throughput. Use for validating QoS/policing impacts.
-- **Repeater**: Menu -> 16 to run repeated load tests with gaps for thermal/roaming studies.
-- **Profiles**: Menu -> 18 saves default targets/durations per site or lab. Profiles stored in `wifi_profiles.json`.
+## Sessions, Config, Logs
+- Config: `~/.netreaper/config` (edit via `netreaper config edit`; view with `netreaper config show`).
+- Sessions: `~/.netreaper/sessions/` with per-session metadata.
+- Logs: `~/.netreaper/logs/` (timestamped). Review after each run to see exact commands executed.
+- Loot/output: `~/.netreaper/loot/` and `~/.netreaper/output/` for captures, creds, reports.
 
-## Integration
-- **Automation**: Wrap `wifi_main.py --self-test --quiet` in CI to gate lab readiness.
-- **Reporting**: Parse `summary_*.csv` in analytics pipelines or import into spreadsheets.
-- **Safety Hooks**: Use `--dry-run` during change windows to validate command plans before execution.
+## Exporting Results
+- Use `netreaper session export` (or the menu export option) to bundle logs, outputs, and summaries.
+- Many modules drop Markdown/CSV/JSON next to their raw outputs for reporting.
 
-## Logging & Reports
-- Logs: `./logs/wifi_multitool_YYYYMMDD_HHMMSS.log` (DEBUG traces when `--verbose`).
-- Backups: `logs/backup_<session>.json` captures service/interface state before monitor-mode or netem changes.
-- Reports: JSON/Markdown summaries saved alongside logs for each session.
+## Safety Tips
+- Run invasive modules (wireless attacks, brute force, stress) only with written authorization.
+- Review the command previews shown before execution and read the corresponding log entries when testing new options.
+- Keep tool versions updated: `sudo netreaper-install all` to refresh, or update the script via `wget .../netreaper -O netreaper && chmod +x netreaper` if prompted.
+- Always verify interfaces: `ip link`, `rfkill list` before enabling monitor mode.

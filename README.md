@@ -1,105 +1,187 @@
-# NETREAPER 💀
-
 <div align="center">
 
-```
-███╗   ██╗███████╗████████╗██████╗ ███████╗ █████╗ ██████╗ ███████╗██████╗ 
-████╗  ██║██╔════╝╚══██╔══╝██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔════╝██╔══██╗
-██╔██╗ ██║█████╗     ██║   ██████╔╝█████╗  ███████║██████╔╝█████╗  ██████╔╝
-██║╚██╗██║██╔══╝     ██║   ██╔══██╗██╔══╝  ██╔══██║██╔═══╝ ██╔══╝  ██╔══██╗
-██║ ╚████║███████╗   ██║   ██║  ██║███████╗██║  ██║██║     ███████╗██║  ██║
-╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝
-```
+# ☠️ NETREAPER
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║  ███╗   ██╗███████╗████████╗██████╗ ███████╗ █████╗ ██████╗ ███████╗██████╗  ║
+║  ████╗  ██║██╔════╝╚══██╔══╝██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔════╝██╔══██╗ ║
+║  ██╔██╗ ██║█████╗     ██║   ██████╔╝█████╗  ███████║██████╔╝█████╗  ██████╔╝ ║
+║  ██║╚██╗██║██╔══╝     ██║   ██╔══██╗██╔══╝  ██╔══██║██╔═══╝ ██╔══╝  ██╔══██╗ ║
+║  ██║ ╚████║███████╗   ██║   ██║  ██║███████╗██║  ██║██║     ███████╗██║  ██║ ║
+║  ╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝ ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
 
-**The disowned child of aircrack-ng and wifite. It came back with a vengeance.**
+### *"Some tools scan. Some tools attack. I do both."*
 
-> *"Some tools scan. Some tools attack. I do both."*
+<br>
 
-[![Version](https://img.shields.io/badge/version-3.4.9-red?style=for-the-badge)](https://github.com/Nerds489/NETREAPER)
-[![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Linux-blue?style=for-the-badge)](https://www.linux.org/)
-[![Bash](https://img.shields.io/badge/bash-5.0%2B-orange?style=for-the-badge)](https://www.gnu.org/software/bash/)
+[![Version](https://img.shields.io/badge/VERSION-4.1.0_PHANTOM-ff0040?style=for-the-badge&logo=ghost&logoColor=white)](https://github.com/Nerds489/NETREAPER)
+[![License](https://img.shields.io/badge/LICENSE-MIT-00d4ff?style=for-the-badge&logo=opensourceinitiative&logoColor=white)](LICENSE)
+[![Platform](https://img.shields.io/badge/PLATFORM-LINUX-ffaa00?style=for-the-badge&logo=linux&logoColor=white)](https://www.linux.org/)
+[![Bash](https://img.shields.io/badge/BASH-5.0+-40c057?style=for-the-badge&logo=gnubash&logoColor=white)](https://www.gnu.org/software/bash/)
+[![Tools](https://img.shields.io/badge/TOOLS-70+-9c36b5?style=for-the-badge&logo=hackaday&logoColor=white)](#-the-arsenal)
 
-[Features](#features) • [Installation](#installation) • [Usage](#usage) • [Screenshots](#screenshots) • [Tool Arsenal](#tool-arsenal) • [Legal](#legal-disclaimer)
+<br>
+
+**The forbidden lovechild of `aircrack-ng` and `wifite`.**<br>
+**Abandoned at birth. Raised by hackers. Back for vengeance.**
+
+<br>
+
+[⚡ Quick Start](#-quick-start) •
+[🎯 Features](#-features) •
+[📡 Arsenal](#-the-arsenal) •
+[📸 Screenshots](#-screenshots) •
+[🔧 Config](#-configuration) •
+[⚠️ Legal](#%EF%B8%8F-legal-disclaimer)
+
+---
 
 </div>
 
+## 💀 What is NETREAPER?
+
+> **One tool to rule them all.**
+
+NETREAPER is a **unified offensive security toolkit** that wraps **70+ penetration testing tools** into a single, menacing command-line interface. No more juggling terminals. No more forgetting syntax. Just pure, organized chaos.
+┌──────────────────────────────────────────────────────────────────┐
+│                                                                  │
+│   Before NETREAPER:                After NETREAPER:              │
+│   ─────────────────                ────────────────              │
+│   $ nmap -sS -sV -A...             $ netreaper                   │
+│   $ airmon-ng start...             > Select option               │
+│   $ airodump-ng...                 > Enter target                │
+│   $ hashcat -m 22000...            > Done. ☠️                     │
+│   $ hydra -L users...                                            │
+│   (╯°□°)╯︵ ┻━┻                                                   │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+
+### 🎯 Built For:
+- 🔴 **Red Teamers** - Full offensive toolkit at your fingertips
+- 🔵 **Blue Teamers** - Know your enemy's tools
+- 🎓 **Students** - Learn pentesting with guided menus
+- 🏢 **Professionals** - Consistent interface, professional reports
+
 ---
 
-## 🔥 What is NETREAPER?
+## ⚡ Quick Start
+```bash
+# Clone the reaper
+git clone https://github.com/Nerds489/NETREAPER.git
+cd NETREAPER
 
-NETREAPER is an all-in-one network security and WiFi assault toolkit that unifies **60+ offensive security tools** into a single, beautiful command-line interface. Stop juggling between dozens of tools with different syntaxes—NETREAPER wraps them all in consistent, easy-to-use menus.
+# Summon it
+sudo ./install.sh
 
-Built for red teamers, penetration testers, and security researchers who want power without the hassle.
+# Unleash it
+netreaper
+```
+
+**One-liner for the impatient:**
+```bash
+git clone https://github.com/Nerds489/NETREAPER.git && cd NETREAPER && sudo ./install.sh && netreaper
+```
 
 ---
 
-## ✨ Features
+## 🎯 Features
 
 <table>
 <tr>
-<td width="50%">
+<td width="50%" valign="top">
 
-### 🔍 Reconnaissance
-- Port scanning (nmap, masscan, unicornscan)
-- Network discovery & host enumeration
-- OS fingerprinting & service detection
-- DNS enumeration & zone transfers
-- SSL/TLS analysis & vulnerability checks
+### 🔍 RECON
+*Know your target*
 
-</td>
-<td width="50%">
-
-### 📡 Wireless Attacks
-- Monitor mode management
-- Deauthentication attacks
-- WPS exploitation (Reaver, Bully, Pixiewps)
-- Handshake capture & cracking
-- Channel hopping & client tracking
+| Tool | Purpose |
+|------|---------|
+| `nmap` | Port scanning (quick/full/stealth/vuln) |
+| `masscan` | Rapid mass scanning |
+| `rustscan` | Blazing fast port discovery |
+| `netdiscover` | ARP network discovery |
+| `dnsenum` | DNS enumeration |
+| `sslscan` | SSL/TLS analysis |
+| `enum4linux` | SMB enumeration |
 
 </td>
-</tr>
-<tr>
-<td width="50%">
+<td width="50%" valign="top">
 
-### 💀 Exploitation
-- Web vulnerability scanning (Nikto, SQLMap)
-- WordPress enumeration (WPScan)
-- Directory & file brute forcing
-- Metasploit Framework integration
-- Exploit database searching
+### 📡 WIRELESS
+*Own the airwaves*
 
-</td>
-<td width="50%">
-
-### 🔥 Stress Testing
-- Bandwidth testing (iperf3)
-- Packet flooding (hping3)
-- HTTP load testing (Apache Bench)
-- Network impairment simulation
-- Traffic capture & analysis
+| Tool | Purpose |
+|------|---------|
+| `aircrack-ng` | WPA/WPA2 cracking |
+| `airodump-ng` | Packet capture |
+| `aireplay-ng` | Deauth attacks |
+| `reaver` | WPS exploitation |
+| `bettercap` | MITM attacks |
+| `wifite` | Automated WiFi audit |
+| `hostapd` | Evil twin AP |
 
 </td>
 </tr>
 <tr>
-<td width="50%">
+<td width="50%" valign="top">
 
-### 🔎 OSINT
-- Email & subdomain harvesting
-- Shodan integration
-- WHOIS lookups
-- Google dorking assistance
-- Recon-ng framework
+### 💀 EXPLOIT
+*Break all the things*
+
+| Tool | Purpose |
+|------|---------|
+| `metasploit` | Exploitation framework |
+| `sqlmap` | SQL injection |
+| `nikto` | Web vulnerability scan |
+| `gobuster` | Directory brute force |
+| `wpscan` | WordPress exploitation |
+| `searchsploit` | Exploit database |
+| `nuclei` | Template-based scanning |
 
 </td>
-<td width="50%">
+<td width="50%" valign="top">
 
-### 🛡️ Defense & Monitoring
-- Deauth/disassoc detection
-- Airtime utilization audits
-- LAN inventory scanning
-- Traffic monitoring
-- Real-time logging
+### 🔑 CREDENTIALS
+*Crack all the hashes*
+
+| Tool | Purpose |
+|------|---------|
+| `hashcat` | GPU hash cracking |
+| `john` | CPU hash cracking |
+| `hydra` | Online brute force |
+| `medusa` | Parallel brute force |
+| `crackmapexec` | SMB/WinRM attacks |
+| `impacket` | Windows protocols |
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### 🔥 STRESS
+*Test the limits*
+
+| Tool | Purpose |
+|------|---------|
+| `hping3` | Packet flooding |
+| `iperf3` | Bandwidth testing |
+| `ab` | HTTP load testing |
+| `tc/netem` | Network impairment |
+
+</td>
+<td width="50%" valign="top">
+
+### 📊 INTEL
+*Gather everything*
+
+| Tool | Purpose |
+|------|---------|
+| `theharvester` | OSINT harvesting |
+| `recon-ng` | Recon framework |
+| `shodan` | Internet scanning |
+| `tcpdump` | Packet capture |
+| `wireshark` | Traffic analysis |
 
 </td>
 </tr>
@@ -107,339 +189,258 @@ Built for red teamers, penetration testers, and security researchers who want po
 
 ---
 
-## 📦 Installation
+## 🎮 The Menu System
 
-### Quick Install
+NETREAPER v4.0 introduces a **clean, organized menu structure**:
+╔═══════════════════════════════════════════════════════════════════╗
+║                         ◤ ARSENAL ◢                               ║
+╠═══════════════════════════════════════════════════════════════════╣
+║                                                                   ║
+║   [1] 🔍 RECON           Scanning, discovery, enumeration        ║
+║   [2] 📡 WIRELESS        WiFi attacks, monitoring, cracking       ║
+║   [3] 💀 EXPLOIT         Web attacks, SQLi, Metasploit            ║
+║   [4] 🔥 STRESS          Bandwidth, flooding, load testing        ║
+║   [5] 🔧 TOOLS           Install arsenal, status, updates         ║
+║   [6] 📊 INTEL           OSINT, traffic capture, reporting        ║
+║   [7] 🔑 CREDENTIALS     Hash cracking, brute force, dumping      ║
+║   [8] 🎯 POST-EXPLOIT    Lateral movement, persistence            ║
+║                                                                   ║
+║   [S] 📁 Sessions        [C] ⚙ Config        [H] Help            ║
+║                                                                   ║
+║                        [Q] Quit                                   ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝
 
-```bash
-# Clone the repository
-git clone https://github.com/Nerds489/NETREAPER.git
-cd NETREAPER
-
-# Make executable and install system-wide
-chmod +x netreaper
-sudo ./netreaper --install
-
-# Run it
-sudo netreaper
-```
-
-### Manual Install
-
-```bash
-# Download directly
-wget https://raw.githubusercontent.com/Nerds489/NETREAPER/main/netreaper
-chmod +x netreaper
-
-# Run from current directory
-./netreaper
-
-# Or install to PATH
-sudo cp netreaper /usr/local/bin/
-```
-
-### Dependencies
-
-NETREAPER wraps existing security tools. Install what you need:
-
-```bash
-# Core scanning tools
-sudo apt install -y nmap masscan arp-scan netdiscover
-
-# WiFi tools
-sudo apt install -y aircrack-ng wifite reaver bully
-
-# Web tools  
-sudo apt install -y nikto sqlmap gobuster wpscan
-
-# OSINT tools
-sudo apt install -y theharvester recon-ng whois
-
-# Stress testing
-sudo apt install -y hping3 iperf3 apache2-utils
-
-# Full arsenal (everything)
-sudo apt install -y nmap masscan unicornscan netdiscover arp-scan fping \
-    hping3 p0f arping nbtscan aircrack-ng wifite reaver bully pixiewps \
-    nikto wpscan sqlmap dirb gobuster ffuf dnsenum dnsmap dnsrecon \
-    sslscan sslyze onesixtyone smbmap smbclient enum4linux tcpdump \
-    wireshark tshark ettercap-graphical theharvester recon-ng whois \
-    hping3 iperf3 apache2-utils metasploit-framework exploitdb
-```
+Each category opens a **submenu** with specific tools and options.
 
 ---
 
-## 🚀 Usage
+## 🛠️ The Arsenal
 
-### Interactive Mode (Recommended)
+### Installation Methods
 
+**Option 1: Essential Tools Only** (~500MB, 5 min)
 ```bash
-# Launch the interactive menu
-sudo netreaper
-
-# Or explicitly
-sudo netreaper menu
+sudo netreaper-install essentials
 ```
 
-The interactive menu provides guided access to all features with a clean, menacing interface.
-
-### Direct CLI Commands
-
+**Option 2: Full Arsenal** (~3-5GB, 15-30 min)
 ```bash
-# Port scanning
-sudo netreaper scan 192.168.1.0/24              # Quick scan
-sudo netreaper scan 10.0.0.1 --full             # Full port + service scan
-sudo netreaper scan target.com --stealth        # Low-profile scan
-sudo netreaper scan target.com --vuln           # Vulnerability scripts
-
-# WiFi operations
-sudo netreaper wifi --monitor wlan0             # Enable monitor mode
-sudo netreaper wifi --managed wlan0             # Disable monitor mode
-sudo netreaper wifi --scan                      # Scan for networks
-
-# Utilities
-sudo netreaper status                           # Show installed tools
-sudo netreaper install                          # Install tool packages
-sudo netreaper help                             # Show help
-sudo netreaper --version                        # Show version
+sudo netreaper-install all
 ```
 
-### First Run
+**Option 3: Category Install**
+```bash
+sudo netreaper-install scanning    # nmap, masscan, rustscan...
+sudo netreaper-install wireless    # aircrack-ng, wifite, bettercap...
+sudo netreaper-install exploit     # metasploit, sqlmap, nuclei...
+sudo netreaper-install creds       # hashcat, john, hydra...
+```
 
-On first launch, NETREAPER displays a legal disclaimer requiring acknowledgment. This is stored in `~/.netreaper/.legal_accepted` and won't appear again.
+**Option 4: Interactive Menu**
+```bash
+sudo netreaper-install
+```
+
+### Check What's Installed
+```bash
+netreaper status
+# or
+sudo netreaper-install status
+```
 
 ---
 
 ## 📸 Screenshots
 
+<details>
+<summary><b>🖼️ Click to expand screenshots</b></summary>
+
 ### Main Menu
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         ◤ ARSENAL ◢                                 │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  ⚔ RECON                          🛡 WIRELESS                       │
-│  ─────────────────────           ─────────────────────              │
-│  [1] Port Scanning               [7]  WiFi Recon                    │
-│  [2] Network Discovery           [8]  Deauth Attack                 │
-│  [3] DNS Enumeration             [9]  WPS Attack                    │
-│  [4] SSL/TLS Analysis            [10] Handshake Capture             │
-│  [5] SNMP Sweep                  [11] Monitor Mode                  │
-│  [6] SMB Enumeration             [12] Channel Hopper                │
-│                                                                     │
-│  💀 EXPLOIT                       🔥 STRESS                         │
-│  ─────────────────────           ─────────────────────              │
-│  [13] Web Attacks                [17] Bandwidth Test (iperf)        │
-│  [14] SQL Injection              [18] Packet Flood (hping3)         │
-│  [15] Metasploit Console         [19] HTTP Load Test                │
-│  [16] Exploit Search             [20] Network Impairment            │
-│                                                                     │
-│              [Q] Quit    [H] Help    [R] Run Direct                 │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
+███╗   ██╗███████╗████████╗██████╗ ███████╗ █████╗ ██████╗ ███████╗██████╗ 
+████╗  ██║██╔════╝╚══██╔══╝██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔════╝██╔══██╗
+██╔██╗ ██║█████╗     ██║   ██████╔╝█████╗  ███████║██████╔╝█████╗  ██████╔╝
+██║╚██╗██║██╔══╝     ██║   ██╔══██╗██╔══╝  ██╔══██║██╔═══╝ ██╔══╝  ██╔══██╗
+██║ ╚████║███████╗   ██║   ██║  ██║███████╗██║  ██║██║     ███████╗██║  ██║
+╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝
 
-### Port Scanning Submenu
-```
-╔═══════════════════════════════════════════════════════════════╗
-║                    ⚔ PORT SCANNING                            ║
-╚═══════════════════════════════════════════════════════════════╝
+═══════════════════════════════════════════════════════════════════════════
+║ "Some tools scan. Some tools attack. I do both."                        ║
+═══════════════════════════════════════════════════════════════════════════
+                    [ v4.1.0 // Phantom // 70+ Tools ]
 
-[1] Quick Scan          nmap -T4 -F
-[2] Full Scan           nmap -sS -sV -sC -A -p-
-[3] Stealth Scan        nmap -sS -T2 -f
-[4] Vuln Scan           nmap --script vuln
-[5] UDP Scan            nmap -sU --top-ports 100
-[6] Masscan             masscan -p1-65535 --rate=10000
-[7] Service Detection   nmap -sV --version-intensity 5
+### Tool Status
+╔═══════════════════════════════════════════════════════════╗
+║                    ARSENAL STATUS                        ║
+╚═══════════════════════════════════════════════════════════╝
+SCANNING:
+✓nmap  ✓masscan  ✓rustscan  ✓netdiscover  ✓arp-scan
+WIRELESS:
+✓aircrack-ng  ✓airmon-ng  ✓airodump-ng  ✓reaver  ✓bettercap
+CREDENTIALS:
+✓hashcat  ✓john  ✓hydra  ✓medusa
 
-[0] Back
-```
+Installed: 45  Missing: 25
+
+</details>
 
 ---
 
-## 🔧 Tool Arsenal
+## 🔧 Configuration
 
-### Scanning & Enumeration
-| Tool | Description | Status |
-|------|-------------|--------|
-| nmap | Network mapper with NSE scripts | ✅ Integrated |
-| masscan | Fastest port scanner | ✅ Integrated |
-| unicornscan | Async TCP/UDP scanner | ✅ Integrated |
-| arp-scan | Layer-2 ARP discovery | ✅ Integrated |
-| netdiscover | Active/passive ARP recon | ✅ Integrated |
-| dnsenum | DNS enumeration | ✅ Integrated |
-| sslscan | SSL/TLS cipher analysis | ✅ Integrated |
-
-### WiFi
-| Tool | Description | Status |
-|------|-------------|--------|
-| aircrack-ng | WEP/WPA cracking suite | ✅ Integrated |
-| wifite | Automated WiFi attacks | ✅ Integrated |
-| reaver | WPS brute force | ✅ Integrated |
-| bully | WPS attacks | ✅ Integrated |
-| pixiewps | Offline WPS attack | ✅ Integrated |
-
-### Web
-| Tool | Description | Status |
-|------|-------------|--------|
-| nikto | Web server scanner | ✅ Integrated |
-| sqlmap | SQL injection automation | ✅ Integrated |
-| wpscan | WordPress scanner | ✅ Integrated |
-| gobuster | Directory brute forcing | ✅ Integrated |
-| ffuf | Fast web fuzzer | ✅ Integrated |
-
-### Exploitation
-| Tool | Description | Status |
-|------|-------------|--------|
-| metasploit | Exploitation framework | ✅ Integrated |
-| searchsploit | Exploit database search | ✅ Integrated |
-
-### OSINT
-| Tool | Description | Status |
-|------|-------------|--------|
-| theHarvester | Email/subdomain harvester | ✅ Integrated |
-| recon-ng | Web recon framework | ✅ Integrated |
-| shodan | Internet device search | ✅ Integrated |
-
----
-
-## 📁 File Structure
-
-```
+NETREAPER stores config in `~/.netreaper/`:
 ~/.netreaper/
-├── config/              # Configuration files
-│   └── .legal_accepted  # Legal disclaimer acceptance
-├── logs/                # Command and session logs
-│   └── netreaper.log
-├── output/              # Scan results and exports
-│   └── scan_*.txt
-└── loot/                # Captured credentials and data
+├── config          # User preferences
+├── sessions/       # Saved attack sessions
+├── logs/           # Operation logs
+├── output/         # Scan results
+└── loot/           # Captured credentials
+
+### Config Options
+```bash
+# Edit config
+netreaper config edit
+
+# Show current config
+netreaper config show
+
+# Reset to defaults
+netreaper config reset
 ```
 
 ---
 
-## ⚙️ Configuration
-
-NETREAPER stores its configuration in `~/.netreaper/`. 
-
-### Environment Variables
-
+## 💻 CLI Usage
 ```bash
-# Disable colors
-export NO_COLOR=1
+# Interactive menu (default)
+netreaper
 
-# Enable debug mode
-export DEBUG=1
+# Direct commands
+netreaper scan 192.168.1.0/24 --quick
+netreaper scan 10.0.0.1 --full --vuln
+netreaper wifi --monitor wlan0
+netreaper crack handshake.cap --hashcat
+
+# Session management
+netreaper session start
+netreaper session resume <name>
+netreaper session export
+
+# Tool management
+netreaper status
+netreaper install
+
+# Help
+netreaper help
+netreaper --version
 ```
 
-### Uninstall
+---
 
-```bash
-# Remove binary
-sudo netreaper --uninstall
+## 🗺️ Roadmap
 
-# Full cleanup (removes config and logs)
-# Answer 'y' when prompted
-```
+- [x] v3.0 - Initial release with 60+ tools
+- [x] v3.1 - Session management, WiFi cracking
+- [x] v3.3 - CLI improvements, verbose logging
+- [x] v3.4 - Bug fixes, installer improvements
+- [x] v4.0 - Menu restructure, separate installer, sudo handling
+- [x] v4.1 - README overhaul, style updates
+- [ ] v4.2 - Profile system, favorites, aliases
+- [ ] v5.0 - Plugin architecture, custom modules
 
 ---
 
 ## 🤝 Contributing
+```bash
+# Fork it
+# Clone it
+git clone https://github.com/YOUR_USERNAME/NETREAPER.git
 
-Contributions are welcome! Here's how:
+# Branch it
+git checkout -b feature/awesome-feature
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/evil-twin`)
-3. Commit your changes (`git commit -am 'Add evil twin attack'`)
-4. Push to the branch (`git push origin feature/evil-twin`)
-5. Open a Pull Request
+# Code it
+# Test it
+bash -n netreaper
+shellcheck netreaper
 
-### Code Style
+# Push it
+git push origin feature/awesome-feature
 
-- Follow existing color scheme (C_BLOOD, C_VENOM, C_GHOST, etc.)
-- Use consistent menu box formatting
-- Function naming: `menu_*`, `cmd_*`, `run_*`
-- Run `shellcheck netreaper` before submitting
+# PR it
+```
 
 ---
 
 ## ⚠️ Legal Disclaimer
-
-```
-╔═══════════════════════════════════════════════════════════════════╗
-║                     ⚠  LEGAL DISCLAIMER  ⚠                        ║
-╠═══════════════════════════════════════════════════════════════════╣
-║                                                                   ║
-║  This tool is for AUTHORIZED PENETRATION TESTING ONLY.           ║
-║                                                                   ║
-║  By using this tool, you confirm:                                 ║
-║  • You have WRITTEN authorization to test target systems         ║
-║  • You accept FULL legal responsibility for your actions         ║
-║  • You understand unauthorized access is a FEDERAL CRIME         ║
-║  • The authors accept NO LIABILITY for misuse                    ║
-║                                                                   ║
-║  CFAA violations: Up to 20 years imprisonment                    ║
-║                                                                   ║
-╚═══════════════════════════════════════════════════════════════════╝
-```
-
-**This tool is intended for:**
-- Authorized penetration testing
-- Security research on systems you own
-- Educational purposes in lab environments
-- CTF competitions
-
-**This tool is NOT for:**
-- Unauthorized access to computer systems
-- Attacking networks without explicit permission
-- Any illegal activities
-
-The developers assume no liability and are not responsible for any misuse or damage caused by this program.
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║   ⚠️  THIS TOOL IS FOR AUTHORIZED PENETRATION TESTING ONLY  ⚠️                ║
+║                                                                              ║
+║   By using NETREAPER, you agree to:                                          ║
+║   • Only test systems you have WRITTEN AUTHORIZATION to test                 ║
+║   • Accept FULL LEGAL RESPONSIBILITY for your actions                        ║
+║   • Understand that UNAUTHORIZED ACCESS IS A FEDERAL CRIME                   ║
+║                                                                              ║
+║   The developers accept NO LIABILITY for misuse of this tool.                ║
+║                                                                              ║
+║   CFAA violations can result in up to 20 years imprisonment.                 ║
+║   Don't be stupid. Get permission. Document everything.                      ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
 
 ---
 
 ## 📜 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Apache License 2.0 - See [LICENSE](LICENSE) for details.
+
+**TL;DR:** Follow Apache 2.0, keep notices, and remember there is no warranty.
 
 ---
 
 ## 🙏 Credits
 
-- Inspired by [aircrack-ng](https://www.aircrack-ng.org/), [wifite](https://github.com/derv82/wifite2), and countless security tools
-- Built by [Network & Firewall Technicians (NFT)](https://github.com/Nerds489)
-- ASCII art generated with love and malice
+Built with hatred for complexity and love for chaos by **[Network & Firewall Technicians (NFT)](https://github.com/Nerds489)**
 
----
-
-## 📞 Support
-
-- 🐛 [Report a Bug](https://github.com/Nerds489/NETREAPER/issues)
-- 💡 [Request a Feature](https://github.com/Nerds489/NETREAPER/issues)
-- 📧 Contact: your@email.com
+### Standing on the shoulders of giants:
+- [aircrack-ng](https://github.com/aircrack-ng/aircrack-ng)
+- [nmap](https://nmap.org/)
+- [Metasploit](https://www.metasploit.com/)
+- [hashcat](https://hashcat.net/)
+- And 60+ other incredible open-source projects
 
 ---
 
 <div align="center">
 
-**NETREAPER** — *Some tools scan. Some tools attack. I do both.*
+**If NETREAPER helped you, give it a ⭐**
+"In the kingdom of the blind, the one-eyed man is king.
+ In the kingdom of WiFi, NETREAPER is god."
+ 
+                                - Ancient Hacker Proverb
 
-```
-          ______
-       .-"      "-.
-      /            \
-     |              |
-     |,  .-.  .-.  ,|
-     | )(_o/  \o_)( |
-     |/     /\     \|
-     (_     ^^     _)
-      \__|IIIIII|__/
-       | \IIIIII/ |
-       \          /
-        `--------`
-```
+<br>
 
-*The reaper is watching.*
+[![GitHub stars](https://img.shields.io/github/stars/Nerds489/NETREAPER?style=social)](https://github.com/Nerds489/NETREAPER/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/Nerds489/NETREAPER?style=social)](https://github.com/Nerds489/NETREAPER/network/members)
+
+**Made with 💀 and mass deauthentication packets**
 
 </div>
+
+---
+
+## 📜 License & Legal
+
+This project is licensed under the **Apache License 2.0** - see [LICENSE](LICENSE) for details.
+
+**© 2025 OFFTRACKMEDIA Studios & Network & Firewall Technicians (NFT)**
+ABN: 84 290 819 896
+
+- [EULA](EULA/OFFTRACKMEDIA_EULA_2025.txt)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security Policy](SECURITY.md)
+
+---

@@ -1,0 +1,53 @@
+name: ✨ Feature Request
+description: Suggest an idea for NETREAPER
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea to make NETREAPER even more menacing? Let us know!
+        
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to Solve
+      description: What problem does this feature address?
+      placeholder: I'm frustrated when...
+    validations:
+      required: true
+      
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: How would you like this to work?
+      placeholder: It would be great if NETREAPER could...
+    validations:
+      required: true
+      
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you tried other approaches?
+      placeholder: I've tried X but it doesn't...
+      
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - New Tool Integration
+        - UI/UX Improvement
+        - Performance
+        - Documentation
+        - Other
+    validations:
+      required: true
+      
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I would be willing to help implement this feature

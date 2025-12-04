@@ -1,49 +1,58 @@
-# Troubleshooting (Decision Tree)
+# NETREAPER Troubleshooting
+
+Use this decision tree to get back to hacking quickly.
 
 ## Start Here
-- Did you run `python3 wifi_main.py --self-test`?
-  - **No**: Run it; review `./logs/*.log` for missing dependencies.
-  - **Yes**: Continue below.
+1. Check version and config paths:
+   - `netreaper --version`
+   - `netreaper status` (tool availability)
+   - Logs live in `~/.netreaper/logs/`; sessions in `~/.netreaper/sessions/`.
+2. Verify install paths:
+   - `command -v netreaper` and `command -v netreaper-install` should return `/usr/local/bin/netreaper` (or your chosen prefix).
+3. Re-run status after updates: `sudo netreaper-install status` to confirm required tools are present.
 
-## Error: "Root privileges required"
-- Are you running with `sudo` for monitor-mode or tc/netem features?
-  - **No**: Re-run with `sudo` or enable `--dry-run` to preview only.
-  - **Yes**: Check `sudo` policy and ensure user is in `sudoers`.
+## Permission or Sudo Problems
+- Menu actions that touch raw sockets, monitor mode, or packet injection need sudo. Re-run the command with `sudo` or start NETREAPER as root when testing locally.
+- If sudo prompts do not appear, ensure your user is in sudoers (`sudo -l`).
+- SELinux/AppArmor: temporarily set to permissive for troubleshooting (`setenforce 0`) if policies block network captures.
 
-## Issue: "No wireless interface detected"
-- Is the adapter present? `ip link show | grep -E "wlan|wlp"`
-  - **No**: Verify drivers/firmware; on VMs attach USB WiFi.
-  - **Yes**: Ensure interface is not soft-blocked: `rfkill list` -> `rfkill unblock wifi`.
+## Missing Tools / Not Installed
+- Run `sudo netreaper-install essentials` or `sudo netreaper-install all` to install dependencies.
+- For a specific set: `sudo netreaper-install recon`, `wireless`, `exploit`, or `creds`.
+- If a tool shows as missing in status, install its package manually (`sudo apt install <tool>`) then rerun `netreaper status`.
 
-## Monitor Mode Fails
-- Does `airmon-ng` exist?
-  - **Yes**: Use menu 7/9 which auto-runs `airmon-ng start <iface>`.
-  - **No**: Install `aircrack-ng` or use `iw dev <iface> set type monitor` manually.
-- If services won't stop, check logs for `NetworkManager`/`wpa_supplicant` errors; stop them manually then retry.
+## Wireless Interface Issues
+- No interface found: `ip link` to confirm adapter; plug in USB adapters for VMs; install correct drivers/firmware.
+- Soft-blocked: `rfkill list` -> `rfkill unblock wifi`.
+- Monitor mode fails: stop conflicting services (`sudo systemctl stop NetworkManager wpa_supplicant`), then retry menu Wireless -> Capture/Deauth.
+- Channel problems: set regulatory domain (`sudo iw reg set <CC>`), then re-attempt capture.
 
-## Scapy Import Error
-- Install dependencies: `sudo apt install python3-scapy` or `pip3 install --user scapy`.
-- Re-run `--self-test` to confirm.
+## Capture/Crack Problems
+- Handshake not captured: ensure target traffic exists; try a brief deauth (Wireless -> Deauth) and keep capture running longer.
+- Hashcat errors: install GPU drivers + OpenCL/CUDA; fall back to `john` if GPU unavailable.
+- Wordlist issues: verify path (`/usr/share/wordlists/rockyou.txt`) and permissions.
 
-## nmap Permission Errors
-- Use sudo for raw socket scans.
-- If on corporate networks, ensure scanning is permitted.
+## Recon/Exploit Hiccups
+- Nmap permission errors: run scans with sudo for SYN/UDP modes.
+- Slow scans: lower timing or switch to `rustscan`/`masscan` for discovery then hand off to nmap.
+- Web scans failing over HTTPS: verify cert trust or add `--insecure` flags where supported (e.g., nikto/wpscan/sqlmap options in menus).
 
-## netem Not Applying
-- Confirm `tc` available: `which tc`.
-- Ensure interface name is correct; menu 13 validates names.
-- Clear old qdisc: `sudo tc qdisc del dev <iface> root` and retry.
+## Stress/Netem Issues
+- `tc` not found: install `iproute2` (`sudo apt install iproute2`).
+- Clearing impairment: `sudo tc qdisc del dev <iface> root` (menu prompts do this automatically).
+- Iperf3 connection refused: confirm server is running (`iperf3 -s`) on the target; adjust firewall.
 
-## ApacheBench Fails with "Connection refused"
-- Verify target URL is reachable and correct scheme (http/https).
-- Reduce concurrency if targeting embedded/AP devices.
+## Sessions, Loot, and Exports
+- Session not saving: ensure `~/.netreaper/` is writable and not full; check `~/.netreaper/logs/` for errors.
+- Loot not found: look in `~/.netreaper/loot/` and `~/.netreaper/output/` for captured creds/pcaps.
+- Export failures: confirm tar/zip utilities are installed; re-run `netreaper session export` with a different destination.
 
-## Logs and Debugging
-- Logs: `./logs/wifi_multitool_YYYYMMDD_HHMMSS.log`
-- Increase verbosity: add `--verbose` to trace function entry/exit and commands.
-- Use `--dry-run` to confirm commands before impacting network services.
+## Updating NETREAPER
+- Check for updates: `netreaper --version` (banner shows current). The tool auto-checks against the repo.
+- Manual refresh: `wget https://raw.githubusercontent.com/Nerds489/NETREAPER/main/netreaper -O netreaper && chmod +x netreaper`.
+- Re-run installer after updates if new dependencies are added: `sudo netreaper-install all`.
 
-## Platform Notes
-- **Linux (Ubuntu/Debian/Fedora/Arch)**: full feature set available with sudo.
-- **macOS**: monitor-mode support depends on adapter/driver; use performance and HTTP tests if monitor mode is unavailable.
-- **Windows/PowerShell**: run inside WSL for monitor-mode features; iperf3/HTTP tests operate natively.
+## Still Stuck?
+- Re-run the action to reproduce and immediately inspect the latest log in `~/.netreaper/logs/` for the exact command/arguments used.
+- If an external tool itself fails, run it directly with the logged arguments to isolate environment issues.
+- When asking for help, include the session name, the failing menu path, and the relevant log snippet.

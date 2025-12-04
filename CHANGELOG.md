@@ -1,30 +1,77 @@
 # Changelog
-All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+All notable changes to NETREAPER will be documented in this file.
 
-## [2.1.0] - 2024-12-04
-
-### Added
-- Legal disclaimer enforcement
-- Bash completion support
-- TOOL_REFERENCE.md documentation
-- Protocol attack command
-- Fuzzing command
-
-### Fixed
-- Shellcheck compliance (SC2115, SC2155, SC2012, SC2015)
-- Code formatting in nft-multitool
-- Safe directory removal
+## [4.1.0] - Phantom - 2024-12-05
 
 ### Changed
-- Consolidated modular bash version into single nft-multitool
-- Enhanced install/uninstall scripts
-- Updated documentation
+- Complete README.md overhaul with funky styling
+- Updated badges and visual elements
+- Improved documentation structure
+- Added roadmap section
+- Enhanced screenshots section
 
-### Removed
-- Redundant wifi_multitool/ directory
+### Fixed
+- Version badge now correctly shows 4.1.0
+- Links updated to correct repository
 
-## [2.0.0] - 2024-05-01
-- Original release from prior chats; baseline monitoring, testing, and impairment features.
+## [4.0.0] - Phantom - 2024-12-05
+
+### Added
+- **New menu structure** - 8 clean categories with submenus
+- **Separate installer** - `netreaper-install` standalone tool
+- **Auto sudo handling** - Prompts for elevation when needed
+- **20 submenus** - Organized tool access by category
+- New color scheme (blue/red team aesthetic)
+
+### Changed
+- Complete UI overhaul for cleaner navigation
+- Menu collapsed from 30+ options to 8 categories
+- Improved root privilege handling throughout
+
+### Fixed
+- Unbound variable bug (`$1` without defaults)
+- Tools failing silently without root
+
+## [3.4.0] - Ascension - 2024-12-04
+
+### Added
+- Auto-update checker
+- Config file support
+- Target history and favorites
+- Output format exports (JSON, CSV, HTML, MD)
+- Profiles/presets system
+- Scheduled scans
+- Scan diff/comparison
+- Command aliases
+
+## [3.3.4] - Retribution - 2024-12-04
+
+### Added
+- `--quiet` flag for scripting
+- `--json` output mode
+- Improved install.sh with `--dry-run`
+- Streamlined bash completion
+
+### Fixed
+- Various shellcheck warnings
+- Formatting issues
+
+## [3.1.0] - Retribution - 2024-12-04
+
+### Added
+- WiFi cracking suite (aircrack-ng, hashcat GPU, john, cowpatty)
+- Evil twin attacks (hostapd, captive portal, karma)
+- Session management (start/resume/export)
+- Credential attacks (hydra, medusa, crackmapexec)
+- Post-exploitation tools (impacket, mimikatz)
+- Expanded to 80+ integrated tools
+
+## [3.0.0] - Vengeance - 2024-12-04
+
+### Added
+- Initial unified release
+- Merged Python WiFi diagnostics with Bash security tools
+- 60+ security capabilities
+- Interactive menu and CLI interface
+- Menacing hacker aesthetic

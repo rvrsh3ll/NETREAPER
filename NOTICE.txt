@@ -1,0 +1,17 @@
+NETREAPER - Network Security & WiFi Assault Toolkit
+Copyright © 2025 OFFTRACKMEDIA Studios
+Copyright © 2025 Network & Firewall Technicians (NFT)
+ABN: 84 290 819 896
+
+This project is provided under the Apache License 2.0.
+
+Third-party tools referenced (nmap, aircrack-ng, hashcat, metasploit, etc.) 
+remain the property of their respective owners and are subject to their 
+own licensing terms.
+
+NETREAPER is a wrapper/interface for these tools and does not claim 
+ownership or authorship of any third-party software.
+
+OFFTRACKMEDIA Studios
+Network & Firewall Technicians
+"Building Empires, Not Just Brands."

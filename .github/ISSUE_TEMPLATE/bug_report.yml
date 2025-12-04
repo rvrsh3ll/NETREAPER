@@ -1,0 +1,70 @@
+name: 🐛 Bug Report
+description: Report a problem with NETREAPER
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please fill out the details below.
+        
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the bug clearly and concisely
+      placeholder: When I run X, Y happens instead of Z...
+    validations:
+      required: true
+      
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this issue?
+      placeholder: |
+        1. Run `netreaper ...`
+        2. Select option X
+        3. Enter target Y
+        4. See error
+    validations:
+      required: true
+      
+  - type: input
+    id: version
+    attributes:
+      label: NETREAPER Version
+      description: Run `netreaper --version`
+      placeholder: "4.1.0 (Phantom)"
+    validations:
+      required: true
+      
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - Ubuntu/Debian
+        - Kali Linux
+        - Arch Linux
+        - Fedora/RHEL
+        - Other Linux
+    validations:
+      required: true
+      
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: Paste any error messages (REDACT any sensitive info!)
+      render: shell
+      
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues for duplicates
+          required: true
+        - label: I am using the latest version
+        - label: I have redacted any sensitive information
+          required: true
