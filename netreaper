@@ -11,7 +11,7 @@
 #    "Some tools scan. Some tools attack. I do both."
 #
 #    Author:  OFFTRACKMEDIA Studios
-#    Version: 4.3.0 (Phantom)
+#    Version: 4.3.1 (Phantom)
 #    License: MIT
 #    
 #    What happens when aircrack-ng and wifite have a baby,
@@ -24,7 +24,7 @@ set -uo pipefail
 QUIET=0
 JSON_OUTPUT=0
 
-readonly VERSION="4.3.0"
+readonly VERSION="4.3.1"
 readonly CODENAME="Phantom"
 readonly SCRIPT_NAME="netreaper"
 # shellcheck disable=SC2034
@@ -151,6 +151,98 @@ declare -a TOOLS_POST=(impacket-secretsdump impacket-smbclient impacket-psexec i
 declare -a TOOLS_OSINT=(theharvester recon-ng maltego shodan)
 # shellcheck disable=SC2034
 declare -a TOOLS_UTIL=(netcat ncat socat proxychains)
+
+# Arsenal metadata and helpers
+readonly -a ARSENAL_CATEGORIES=(SCANNING DNS SSL WIFI WEB EXPLOIT TRAFFIC OSINT CREDS POST)
+
+declare -A CAT_COLORS=(
+    [SCANNING]="$C_CYAN"
+    [DNS]="$C_BLUE"
+    [SSL]="$C_GREEN"
+    [WIFI]="$C_PURPLE"
+    [WEB]="$C_ORANGE"
+    [EXPLOIT]="$C_RED"
+    [TRAFFIC]="$C_YELLOW"
+    [OSINT]="$C_STEEL"
+    [CREDS]="$C_FIRE"
+    [POST]="$C_BLOOD"
+)
+
+declare -A CAT_ICONS=(
+    [SCANNING]="🔍"
+    [DNS]="🌐"
+    [SSL]="🔒"
+    [WIFI]="📡"
+    [WEB]="🕸️"
+    [EXPLOIT]="💀"
+    [TRAFFIC]="📊"
+    [OSINT]="🔎"
+    [CREDS]="🔑"
+    [POST]="🎯"
+)
+
+declare -A TOOL_BINARIES=(
+    [metasploit-framework]="msfconsole"
+    [testssl.sh]="testssl"
+    [burpsuite]="burpsuite"
+    [john]="john"
+    [aircrack-ng]="aircrack-ng"
+    [impacket-secretsdump]="impacket-secretsdump secretsdump.py"
+    [impacket-smbclient]="impacket-smbclient smbclient.py"
+    [impacket-psexec]="impacket-psexec psexec.py"
+    [impacket-wmiexec]="impacket-wmiexec wmiexec.py"
+)
+
+declare -A TOOL_STATUS=()
+
+reset_status_cache() {
+    TOOL_STATUS=()
+}
+
+is_tool_installed() {
+    local tool="$1"
+    local binaries="${TOOL_BINARIES[$tool]:-$tool}"
+
+    for bin in $binaries; do
+        if command -v "$bin" &>/dev/null; then
+            return 0
+        fi
+    done
+
+    [[ -f "/opt/$tool/$tool" ]] && return 0
+    [[ -f "/opt/$tool/${tool}.sh" ]] && return 0
+    [[ -d "/opt/$tool" ]] && return 0
+    [[ -f "/usr/share/$tool/$tool" ]] && return 0
+
+    return 1
+}
+
+tool_status_cached() {
+    local tool="$1"
+    if [[ -z "${TOOL_STATUS[$tool]+set}" ]]; then
+        if is_tool_installed "$tool"; then
+            TOOL_STATUS[$tool]="installed"
+        else
+            TOOL_STATUS[$tool]="missing"
+        fi
+    fi
+    [[ "${TOOL_STATUS[$tool]}" == "installed" ]]
+}
+
+category_tools() {
+    local category="$1"
+    # shellcheck disable=SC2178
+    local -n tools_ref="TOOLS_${category}"
+    echo "${tools_ref[*]}"
+}
+
+category_exists() {
+    local needle="$1"
+    for cat in "${ARSENAL_CATEGORIES[@]}"; do
+        [[ "$cat" == "$needle" ]] && return 0
+    done
+    return 1
+}
 
 #═══════════════════════════════════════════════════════════════════════════════
 # LOGGING
@@ -3795,40 +3887,187 @@ cmd_install_quick() {
     cmd_tool_status
 }
 
-cmd_tool_status() {
+cmd_status_header() {
     echo
-    echo -e "    ${C_SKULL}╔═══════════════════════════════════════════════════════════╗${C_RESET}"
-    echo -e "    ${C_SKULL}║${C_RESET}                    ${C_FIRE}ARSENAL STATUS${C_RESET}                        ${C_SKULL}║${C_RESET}"
-    echo -e "    ${C_SKULL}╚═══════════════════════════════════════════════════════════╝${C_RESET}"
+    echo -e "    ${C_CYAN}╔═══════════════════════════════════════════════════════════════════════╗${C_RESET}"
+    echo -e "    ${C_CYAN}║${C_RESET}                      ${C_FIRE}☠ ARSENAL STATUS ☠${C_RESET}                           ${C_CYAN}║${C_RESET}"
+    echo -e "    ${C_CYAN}╚═══════════════════════════════════════════════════════════════════════╝${C_RESET}"
     echo
-    
-    local installed=0 missing=0
-    
-    # Check each category
-    for category in "SCANNING:${TOOLS_SCANNING[*]}" "DNS:${TOOLS_DNS[*]}" "SSL:${TOOLS_SSL[*]}" \
-                    "WIFI:${TOOLS_WIFI[*]}" "WEB:${TOOLS_WEB[*]}" "EXPLOIT:${TOOLS_EXPLOIT[*]}" \
-                    "TRAFFIC:${TOOLS_TRAFFIC[*]}" "OSINT:${TOOLS_OSINT[*]}" \
-                    "CREDS:${TOOLS_CREDS[*]}" "POST:${TOOLS_POST[*]}"; do
-        local name="${category%%:*}"
-        local tools="${category#*:}"
-        
-        echo -e "    ${C_GHOST}$name:${C_RESET}"
-        printf "    "
-        
+}
+
+cmd_status_full() {
+    reset_status_cache
+    clear
+    cmd_status_header
+
+    local installed=0
+    local missing=0
+    local total=0
+
+    for category in "${ARSENAL_CATEGORIES[@]}"; do
+        local color="${CAT_COLORS[$category]:-$C_SHADOW}"
+        local icon="${CAT_ICONS[$category]:-}"
+        local tools
+        tools=$(category_tools "$category")
+
+        echo -e "    ${color}${icon} ${category}:${C_RESET}"
+        echo -n "    "
+
+        local col=0
         for tool in $tools; do
-            if command -v "$tool" &>/dev/null; then
-                printf "${C_VENOM}✓${C_RESET}%-12s " "$tool"
+            ((total++))
+            if tool_status_cached "$tool"; then
+                echo -ne "${C_GREEN}✓${C_RESET}${tool}  "
                 ((installed++))
             else
-                printf "${C_BLOOD}✗${C_RESET}%-12s " "$tool"
+                echo -ne "${C_RED}✗${C_RESET}${tool}  "
                 ((missing++))
+            fi
+
+            ((col++))
+            if ((col >= 6)); then
+                echo
+                echo -n "    "
+                col=0
             fi
         done
         echo
+        echo
     done
-    
+
+    local pct=0
+    ((total > 0)) && pct=$((installed * 100 / total))
+    local bar_width=40
+    local filled=$((pct * bar_width / 100))
+    local empty=$((bar_width - filled))
+
+    echo -e "    ${C_BORDER}───────────────────────────────────────────────────────────────────────${C_RESET}"
     echo
-    echo -e "    ${C_VENOM}Installed: $installed${C_RESET}  ${C_BLOOD}Missing: $missing${C_RESET}"
+    echo -ne "    ${C_SHADOW}Progress: ${C_RESET}["
+    echo -ne "${C_GREEN}"
+    for ((i=0; i<filled; i++)); do echo -n "█"; done
+    echo -ne "${C_RED}"
+    for ((i=0; i<empty; i++)); do echo -n "░"; done
+    echo -e "${C_RESET}] ${pct}%"
+    echo
+    echo -e "    ${C_GREEN}● Installed: ${installed}${C_RESET}    ${C_RED}● Missing: ${missing}${C_RESET}    ${C_SHADOW}● Total: ${total}${C_RESET}"
+    echo
+
+    if ((missing > 0)); then
+        echo -e "    ${C_SHADOW}Run ${C_CYAN}sudo netreaper-install${C_RESET}${C_SHADOW} to install missing tools${C_RESET}"
+        echo
+    fi
+}
+
+cmd_status_compact() {
+    reset_status_cache
+
+    echo
+    echo -e "    ${C_FIRE}☠ ARSENAL STATUS${C_RESET}"
+    echo
+
+    local installed=0
+    local missing=0
+    local quick_tools=(nmap masscan aircrack-ng hashcat john hydra nikto sqlmap metasploit-framework)
+
+    for tool in "${quick_tools[@]}"; do
+        if tool_status_cached "$tool"; then
+            ((installed++))
+        else
+            ((missing++))
+        fi
+    done
+
+    echo -e "    ${C_GREEN}✓ Installed:${C_RESET} $installed"
+    echo -e "    ${C_RED}✗ Missing:${C_RESET} $missing"
+    echo
+}
+
+cmd_status_category() {
+    reset_status_cache
+    local cat_raw="${1:-}"
+    local cat="${cat_raw^^}"
+
+    if [[ -z "$cat" ]]; then
+        log_error "Category required"
+        echo "    Available: ${ARSENAL_CATEGORIES[*]}"
+        return 1
+    fi
+
+    if ! category_exists "$cat"; then
+        log_error "Unknown category: $cat"
+        echo "    Available: ${ARSENAL_CATEGORIES[*]}"
+        return 1
+    fi
+
+    echo
+    echo -e "    ${CAT_COLORS[$cat]}${cat} Tools:${C_RESET}"
+    echo
+
+    for tool in $(category_tools "$cat"); do
+        if tool_status_cached "$tool"; then
+            echo -e "    ${C_GREEN}✓${C_RESET} $tool"
+        else
+            echo -e "    ${C_RED}✗${C_RESET} $tool"
+        fi
+    done
+    echo
+}
+
+cmd_status_json() {
+    reset_status_cache
+
+    local installed=0
+    local missing=0
+    local total=0
+
+    echo "{"
+    echo "  \"version\": \"$VERSION\","
+    echo "  \"categories\": {"
+
+    local idx=0
+    local total_cats=${#ARSENAL_CATEGORIES[@]}
+    for category in "${ARSENAL_CATEGORIES[@]}"; do
+        ((idx++))
+        printf '    "%s": [' "${category,,}"
+
+        local first_tool=true
+        for tool in $(category_tools "$category"); do
+            ((total++))
+            local status="missing"
+            if tool_status_cached "$tool"; then
+                status="installed"
+                ((installed++))
+            else
+                ((missing++))
+            fi
+
+            if [[ "$first_tool" == true ]]; then
+                first_tool=false
+            else
+                printf ', '
+            fi
+            printf '{"name": "%s", "status": "%s"}' "$tool" "$status"
+        done
+
+        if (( idx < total_cats )); then
+            echo "],"
+        else
+            echo "]"
+        fi
+    done
+
+    echo "  },"
+    echo "  \"summary\": {"
+    echo "    \"installed\": $installed,"
+    echo "    \"missing\": $missing,"
+    echo "    \"total\": $total"
+    echo "  }"
+    echo "}"
+}
+
+cmd_tool_status() {
+    cmd_status_full
 }
 
 cmd_view_logs() {
@@ -3908,7 +4147,7 @@ show_help() {
     echo "        export <f> <fmt>    Export to json/csv/html/md"
     echo "        schedule            Manage scheduled scans"
     echo "        diff <f1> <f2>      Compare two scan outputs"
-    echo "        status              Show installed tools"
+    echo "        status              Show installed tools (--compact | --json | --category <name>)"
     echo "        install             Install security tools"
     echo "        menu                Interactive menu (default)"
     echo "        help                Show this help"
@@ -4143,7 +4382,7 @@ show_usage() {
     echo "    export <f> <fmt> Export to json/csv/html/md"
     echo "    schedule         Manage scheduled scans"
     echo "    diff <f1> <f2>   Compare two scan outputs"
-    echo "    status           Show installed tools"
+    echo "    status           Show installed tools (--compact | --json | --category <name>)"
     echo "    install          Full arsenal install (requires root)"
     echo "    install-quick    Essential tools install (requires root)"
     echo "    menu             Interactive menu"
@@ -4240,7 +4479,15 @@ main() {
         export)      shift; export_cmd "$@" ;;
         schedule)    shift; schedule_cmd "$@" ;;
         diff)        shift; diff_cmd "$@" ;;
-        status)      cmd_tool_status ;;
+        status|arsenal)
+            shift
+            case "${1:-}" in
+                --compact|-c)   cmd_status_compact ;;
+                --json|-j)      cmd_status_json ;;
+                --category|-C)  cmd_status_category "${2:-}" ;;
+                *)              cmd_status_full ;;
+            esac
+            ;;
         install)     cmd_install_arsenal ;;
         install-quick) cmd_install_quick ;;
         help|-h|--help) show_usage ;;

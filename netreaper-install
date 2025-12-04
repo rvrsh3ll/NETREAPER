@@ -20,11 +20,39 @@ readonly C_CYAN='\033[38;5;51m'
 readonly C_BLUE='\033[38;5;39m'
 readonly C_SHADOW='\033[38;5;244m'
 
+declare -A TOOL_BINARIES=(
+    [metasploit-framework]="msfconsole"
+    [testssl.sh]="testssl"
+    [burpsuite]="burpsuite"
+    [impacket-scripts]="impacket-secretsdump secretsdump.py"
+    [impacket-smbclient]="impacket-smbclient smbclient.py"
+    [impacket-psexec]="impacket-psexec psexec.py"
+    [impacket-wmiexec]="impacket-wmiexec wmiexec.py"
+)
+
 # Logging
 log_info()    { echo -e "    ${C_CYAN}[*]${C_RESET} $*"; }
 log_success() { echo -e "    ${C_GREEN}[✓]${C_RESET} $*"; }
 log_warning() { echo -e "    ${C_YELLOW}[!]${C_RESET} $*"; }
 log_error()   { echo -e "    ${C_RED}[✗]${C_RESET} $*"; }
+
+is_tool_installed() {
+    local tool="$1"
+    local binaries="${TOOL_BINARIES[$tool]:-$tool}"
+
+    for bin in $binaries; do
+        if command -v "$bin" &>/dev/null; then
+            return 0
+        fi
+    done
+
+    [[ -f "/opt/$tool/$tool" ]] && return 0
+    [[ -f "/opt/$tool/${tool}.sh" ]] && return 0
+    [[ -d "/opt/$tool" ]] && return 0
+    [[ -f "/usr/share/$tool/$tool" ]] && return 0
+
+    return 1
+}
 
 # Check root
 require_root() {
@@ -144,7 +172,7 @@ install_tool() {
     local method="$2"
     
     # Skip if already installed
-    if command -v "$tool" &>/dev/null; then
+    if is_tool_installed "$tool"; then
         echo -e "    ${C_GREEN}✓${C_RESET} $tool ${C_SHADOW}(already installed)${C_RESET}"
         return 0
     fi
@@ -295,7 +323,7 @@ show_status() {
         echo -e "    ${C_CYAN}${category}:${C_RESET}"
         echo -n "    "
         for tool in "${!tools_ref[@]}"; do
-            if command -v "$tool" &>/dev/null; then
+            if is_tool_installed "$tool"; then
                 echo -ne "${C_GREEN}✓${C_RESET}${tool}  "
                 ((installed++))
             else
