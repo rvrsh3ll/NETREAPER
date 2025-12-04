@@ -13,6 +13,34 @@
 ## Overview
 NETREAPER is a unified offensive toolkit with 70+ tools behind one interface. Use it to scan, attack, monitor, and report without juggling individual commands.
 
+**What’s new in v5.0 (Phantom Protocol):** guided scan/WiFi wizards, first-run setup, log levels with audit trails, safer confirmations, and a refreshed status/installer experience.
+
+## Logging & Verbosity
+- Levels: DEBUG, INFO, WARN, ERROR, FATAL (set via `NETREAPER_LOG_LEVEL` or config).
+- Audit trail: `~/.netreaper/logs/audit_*.log` records installs/runs.
+- Verbose mode: `-v/--verbose` or config `VERBOSE=true`.
+
+## Configuration
+- File: `~/.netreaper/config` (auto-created on first run).
+- Edit interactively: `netreaper config edit`.
+- Show: `netreaper config show`; reset: `netreaper config reset`.
+
+## Wizards
+- First run wizard handles legal notice, verbose preference, and optional essentials install.
+- Scan wizard: `netreaper wizard scan` (target selection, scan type, timing, output).
+- WiFi wizard: `netreaper wizard wifi` (interface selection, attack type, confirmation).
+
+## Privilege Handling
+- Many WiFi/packet actions need root. The tool prompts with sudo and checks capability.
+- `require_root` prompts, `run_privileged` wraps commands with sudo when available.
+
+## Updated Command Examples
+- `netreaper scan 192.168.1.0/24 --full`
+- `netreaper wizard scan`
+- `netreaper wifi --monitor wlan0`
+- `netreaper status --json`
+- `netreaper config show`
+
 ## Install & Prep
 1. Clone: `git clone https://github.com/Nerds489/NETREAPER.git && cd NETREAPER`.
 2. Install: `sudo ./install.sh` (adds `netreaper` and `netreaper-install` to PATH).

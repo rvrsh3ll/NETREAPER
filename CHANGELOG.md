@@ -2,6 +2,30 @@
 
 All notable changes to NETREAPER will be documented in this file.
 
+## [5.0.0] - Phantom Protocol - 2024-12-05
+
+### Added
+- Comprehensive logging system (DEBUG/INFO/WARN/ERROR/FATAL)
+- Audit trail logging for compliance
+- Progress spinners and bars
+- Interactive confirmation prompts and dangerous-operation confirmation
+- Smart sudo/privilege handling
+- First-run setup wizard
+- Scan wizard with guided workflow
+- WiFi attack wizard
+- Enhanced tool detection and auto-install scaffolding
+- Configuration system with interactive editor
+- QUICKREF.md quick reference card
+- Session management, target history and favorites
+
+### Changed
+- UI/UX refresh across menus and status output
+- Restructured CLI parser with wizard/config/log-level flags
+- Help and documentation updates for v5
+
+### Fixed
+- Safer external target confirmation and history handling
+
 ## [4.3.0] - Phantom - 2024-12-05
 
 ### Added
@@ -15,7 +39,7 @@ All notable changes to NETREAPER will be documented in this file.
 - Author attribution in scripts now reflects OFFTRACKMEDIA Studios
 
 ### Fixed
-- Removed remaining NFT references across docs and scripts
+- Removed remaining legacy references across docs and scripts
 
 ## [4.1.0] - Phantom - 2024-12-05
 

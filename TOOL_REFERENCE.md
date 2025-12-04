@@ -1,4 +1,4 @@
-# NETREAPER Tool Reference (v4.3.0)
+# NETREAPER Tool Reference (v5.0.0)
 
 NETREAPER wraps 70+ tools behind one interface. Use the interactive menu for guided flows. CLI shortcuts available:
 - `netreaper scan <target> (--quick|--full|--vuln|--stealth)`

@@ -8,14 +8,12 @@
 #    ██║ ╚████║███████╗   ██║   ██║  ██║███████╗██║  ██║██║     ███████╗██║  ██║
 #    ╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝
 #
-#    "Some tools scan. Some tools attack. I do both."
+#    NETREAPER - Network Security & WiFi Assault Toolkit
+#    Version: 5.0.0 "Phantom Protocol"
 #
-#    Author:  OFFTRACKMEDIA Studios
-#    Version: 4.3.1 (Phantom)
-#    License: MIT
-#    
-#    What happens when aircrack-ng and wifite have a baby,
-#    disown it, and it comes back with a vengeance.
+#    Copyright (c) 2025 OFFTRACKMEDIA Studios
+#    Licensed under the Apache License, Version 2.0
+#
 #
 #═══════════════════════════════════════════════════════════════════════════════
 
@@ -24,8 +22,8 @@ set -uo pipefail
 QUIET=0
 JSON_OUTPUT=0
 
-readonly VERSION="4.3.1"
-readonly CODENAME="Phantom"
+readonly VERSION="5.0.0"
+readonly CODENAME="Phantom Protocol"
 readonly SCRIPT_NAME="netreaper"
 # shellcheck disable=SC2034
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -193,6 +191,76 @@ declare -A TOOL_BINARIES=(
     [impacket-wmiexec]="impacket-wmiexec wmiexec.py"
 )
 
+declare -A TOOL_INFO=(
+    [nmap]="nmap:nmap:apt:scanning:Network mapper"
+    [masscan]="masscan:masscan:apt:scanning:Fast port scanner"
+    [unicornscan]="unicornscan:unicornscan:apt:scanning:Asynchronous TCP/UDP scanner"
+    [rustscan]="rustscan:rustscan:github:scanning:Modern port scanner"
+    [zmap]="zmap:zmap:apt:scanning:Internet-wide scanner"
+    [netdiscover]="netdiscover:netdiscover:apt:scanning:ARP reconnaissance"
+    [arp-scan]="arp-scan:arp-scan:apt:scanning:ARP sweep"
+    [fping]="fping:fping:apt:scanning:Fast ICMP sweep"
+    [hping3]="hping3:hping3:apt:scanning:TCP/IP packet crafter"
+    [p0f]="p0f:p0f:apt:scanning:Passive OS fingerprinting"
+    [arping]="arping:arping:apt:scanning:ARP ping"
+    [nbtscan]="nbtscan:nbtscan:apt:scanning:NetBIOS scanner"
+    [amap]="amap:amap:apt:scanning:Application mapper"
+    [dnsenum]="dnsenum:dnsenum:apt:dns:DNS enumeration"
+    [dnsmap]="dnsmap:dnsmap:apt:dns:DNS bruteforce"
+    [dnsrecon]="dnsrecon:dnsrecon:apt:dns:DNS reconnaissance"
+    [fierce]="fierce:fierce:apt:dns:DNS reconnaissance"
+    [sslscan]="sslscan:sslscan:apt:ssl:SSL/TLS scanner"
+    [sslyze]="sslyze:sslyze:apt:ssl:SSL audit"
+    [testssl.sh]="testssl:testssl.sh:git:ssl:Comprehensive SSL test"
+    [aircrack-ng]="aircrack-ng:aircrack-ng:apt:wifi:WiFi security suite"
+    [airmon-ng]="airmon-ng:aircrack-ng:apt:wifi:Wireless monitor mode"
+    [airodump-ng]="airodump-ng:aircrack-ng:apt:wifi:Capture packets"
+    [aireplay-ng]="aireplay-ng:aircrack-ng:apt:wifi:WiFi injection"
+    [wifite]="wifite:wifite:apt:wifi:Automated WiFi attacks"
+    [reaver]="reaver:reaver:apt:wifi:WPS attack"
+    [bully]="bully:bully:apt:wifi:WPS brute force"
+    [pixiewps]="pixiewps:pixiewps:apt:wifi:WPS Pixie Dust"
+    [bettercap]="bettercap:bettercap:apt:wifi:MITM framework"
+    [fluxion]="fluxion:fluxion:git:wifi:Evil twin framework"
+    [wifiphisher]="wifiphisher:wifiphisher:apt:wifi:Phishing AP"
+    [mdk3]="mdk3:mdk3:apt:wifi:WiFi stress"
+    [mdk4]="mdk4:mdk4:apt:wifi:WiFi stress"
+    [cowpatty]="cowpatty:cowpatty:apt:wifi:WPA handshake cracker"
+    [nikto]="nikto:nikto:apt:web:Web vuln scanner"
+    [wpscan]="wpscan:wpscan:gem:web:WordPress scanner"
+    [sqlmap]="sqlmap:sqlmap:apt:web:SQL injection"
+    [dirb]="dirb:dirb:apt:web:Directory brute force"
+    [gobuster]="gobuster:gobuster:apt:web:Directory brute force"
+    [ffuf]="ffuf:github.com/ffuf/ffuf/v2@latest:go:web:Fuzzing"
+    [burpsuite]="burpsuite:burpsuite:apt:web:Proxy"
+    [nuclei]="nuclei:github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest:go:web:Template scanner"
+    [httpx]="httpx:github.com/projectdiscovery/httpx/cmd/httpx@latest:go:web:HTTP probing"
+    [subfinder]="subfinder:github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest:go:web:Subdomain enum"
+    [amass]="amass:amass:apt:web:Subdomain enum"
+    [metasploit-framework]="msfconsole:metasploit-framework:apt:exploit:Exploitation framework"
+    [searchsploit]="searchsploit:exploitdb:apt:exploit:Exploit DB search"
+    [empire]="empire:empire:git:exploit:Post-exploitation"
+    [covenant]="covenant:covenant:git:exploit:C2 framework"
+    [crackmapexec]="crackmapexec:crackmapexec:pipx:exploit:AD exploitation"
+    [tcpdump]="tcpdump:tcpdump:apt:traffic:Packet capture"
+    [wireshark]="wireshark:wireshark:apt:traffic:Protocol analyzer"
+    [tshark]="tshark:wireshark:apt:traffic:CLI analyzer"
+    [ettercap]="ettercap:ettercap-text-only:apt:traffic:MITM"
+    [theharvester]="theharvester:theharvester:apt:osint:OSINT collection"
+    [recon-ng]="recon-ng:recon-ng:apt:osint:OSINT framework"
+    [maltego]="maltego:maltego:apt:osint:Link analysis"
+    [shodan]="shodan:shodan:pip:osint:Shodan client"
+    [hashcat]="hashcat:hashcat:apt:creds:Password recovery"
+    [john]="john:john:apt:creds:Password cracking"
+    [hydra]="hydra:hydra:apt:creds:Network login cracker"
+    [medusa]="medusa:medusa:apt:creds:Parallel login brute force"
+    [impacket-secretsdump]="impacket-secretsdump:impacket-scripts:apt:post:Dump secrets"
+    [impacket-smbclient]="impacket-smbclient:impacket-scripts:apt:post:SMB client"
+    [impacket-psexec]="impacket-psexec:impacket-scripts:apt:post:Psexec over SMB"
+    [impacket-wmiexec]="impacket-wmiexec:impacket-scripts:apt:post:WMI exec"
+    [mimikatz]="mimikatz:mimikatz:apt:post:Credential dumping"
+)
+
 declare -A TOOL_STATUS=()
 
 reset_status_cache() {
@@ -245,66 +313,141 @@ category_exists() {
 }
 
 #═══════════════════════════════════════════════════════════════════════════════
-# LOGGING
+# LOGGING & TELEMETRY
 #═══════════════════════════════════════════════════════════════════════════════
+
+readonly LOG_DIR="${HOME}/.netreaper/logs"
+readonly LOG_FILE="${LOG_DIR}/netreaper_$(date +%Y%m%d).log"
+readonly AUDIT_FILE="${LOG_DIR}/audit_$(date +%Y%m%d).log"
+LOG_LEVEL="${LOG_LEVEL:-${NETREAPER_LOG_LEVEL:-INFO}}"
+VERBOSE="${VERBOSE:-${NETREAPER_VERBOSE:-false}}"
+
+declare -A LOG_PRIORITIES=(
+    [DEBUG]=0
+    [INFO]=1
+    [WARN]=2
+    [ERROR]=3
+    [FATAL]=4
+)
+
+init_logging() {
+    mkdir -p "$LOG_DIR"
+    touch "$LOG_FILE" "$AUDIT_FILE"
+    chmod 600 "$LOG_FILE" "$AUDIT_FILE" 2>/dev/null || true
+
+    log_debug "═══════════════════════════════════════════════════════"
+    log_debug "NETREAPER v${VERSION} started at $(date '+%Y-%m-%d %H:%M:%S')"
+    log_debug "User: $(whoami) | PID: $$ | TTY: $(tty)"
+    log_debug "═══════════════════════════════════════════════════════"
+}
 
 _log() {
-    local level="${1:-}" color="${2:-}" symbol="${3:-}"
+    local level="$1"
+    local color="$2"
+    local symbol="$3"
     shift 3
-    local timestamp
-    timestamp=$(date '+%H:%M:%S')
     local message="$*"
-    if [[ "$JSON_OUTPUT" == "1" ]]; then
-        local safe
-        safe=${message//"/\\"}
-        printf '{"level":"%s","time":"%s","message":"%s"}\n' "$level" "$timestamp" "$safe"
-    elif [[ "$QUIET" -ne 1 ]]; then
-        echo -e "${C_SHADOW}[${timestamp}]${C_RESET} ${color}${symbol}${C_RESET} $message"
+    local timestamp
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+    local current_priority="${LOG_PRIORITIES[$LOG_LEVEL]:-1}"
+    local msg_priority="${LOG_PRIORITIES[$level]:-1}"
+
+    echo "[$timestamp] [$level] $message" >> "$LOG_FILE"
+
+    if ((msg_priority >= current_priority)) && [[ "$QUIET" -ne 1 ]]; then
+        echo -e "    ${color}[${symbol}]${C_RESET} $message"
     fi
-    echo "[$(date -Iseconds)] [$level] $*" >> "${LOG_DIR}/netreaper.log" 2>/dev/null || true
 }
 
-log_info()    { _log "INFO"    "$C_GHOST"  "[*]" "$@"; }
-log_success() { _log "SUCCESS" "$C_VENOM"  "[✓]" "$@"; }
-log_warning() { _log "WARN"    "$C_FIRE"   "[!]" "$@"; }
-log_error()   { _log "ERROR"   "$C_BLOOD"  "[✗]" "$@"; }
-log_attack()  { _log "ATTACK"  "$C_BLOOD"  "[⚔]" "$@"; }
-log_target()  { _log "TARGET"  "$C_FIRE"   "[◎]" "$@"; }
-log_loot()    { _log "LOOT"    "$C_GOLD"   "[★]" "$@"; }
+log_debug()   { _log "DEBUG" "$C_SHADOW" "~" "$@"; }
+log_info()    { _log "INFO"  "$C_CYAN"   "*" "$@"; }
+log_success() { _log "INFO"  "$C_GREEN"  "✓" "$@"; }
+log_warning() { _log "WARN"  "$C_YELLOW" "!" "$@"; }
+log_error()   { _log "ERROR" "$C_RED"    "✗" "$@"; }
+log_fatal()   { _log "FATAL" "$C_BLOOD"  "☠" "$@"; exit 1; }
+log_attack()  { _log "ATTACK" "$C_BLOOD" "⚔" "$@"; }
+log_target()  { _log "TARGET" "$C_FIRE"  "◎" "$@"; }
+log_loot()    { _log "LOOT"   "$C_GOLD"  "★" "$@"; }
 
-#═══════════════════════════════════════════════════════════════════════════════
-# PROGRESS & TIMING HELPERS
-#═══════════════════════════════════════════════════════════════════════════════
-
-operation_header() {
-    local mode="${1:-}" target="${2:-}"
-    local started
-    started=$(date '+%Y-%m-%d %H:%M:%S')
-    log_info "[] NETREAPER v${VERSION} [] Target: ${target:-N/A} [] Mode: ${mode:-N/A} [] Starting at: ${started} ───────────────────────────────────"
+log_audit() {
+    local action="$1" target="$2" result="$3"
+    local timestamp
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "[$timestamp] [AUDIT] action=$action target=$target result=$result user=$(whoami) ip=$(hostname -I | awk '{print $1}')" >> "$AUDIT_FILE"
 }
 
-log_command_preview() {
+show_spinner() {
+    local pid=$1
+    local message="${2:-Processing}"
+    local spinchars='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+
+    while kill -0 "$pid" 2>/dev/null; do
+        for ((i=0; i<${#spinchars}; i++)); do
+            echo -ne "\r    ${C_CYAN}[${spinchars:$i:1}]${C_RESET} $message..."
+            sleep 0.1
+        done
+    done
+    echo -ne "\r\033[K"
+}
+
+show_progress() {
+    local current=$1 total=$2 message="${3:-Progress}" width=40
+    local pct=$((current * 100 / total))
+    local filled=$((pct * width / 100))
+    local empty=$((width - filled))
+
+    echo -ne "\r    ${C_SHADOW}$message: ${C_RESET}["
+    echo -ne "${C_GREEN}"
+    printf '█%.0s' $(seq 1 $filled 2>/dev/null)
+    echo -ne "${C_SHADOW}"
+    printf '░%.0s' $(seq 1 $empty 2>/dev/null)
+    echo -ne "${C_RESET}] ${pct}%"
+    ((current == total)) && echo
+}
+
+declare -g OPERATION_START_TIME
+start_timer() { OPERATION_START_TIME=$(date +%s%N); }
+end_timer() {
+    local end_time=$(date +%s%N)
+    local duration=$(((end_time - OPERATION_START_TIME) / 1000000))
+    if ((duration < 1000)); then
+        echo "${duration}ms"
+    elif ((duration < 60000)); then
+        echo "$((duration / 1000)).$((duration % 1000 / 100))s"
+    else
+        echo "$((duration / 60000))m $((duration % 60000 / 1000))s"
+    fi
+}
+
+log_verbose() {
+    [[ "$VERBOSE" == true ]] && log_debug "$@"
+}
+
+run_cmd() {
+    local description="$1"; shift
     local cmd="$*"
-    [[ "$QUIET" -eq 1 && "$JSON_OUTPUT" -ne 1 ]] && return
-    log_info "Command: ${cmd}"
-}
 
-start_timer_ms() { date +%s%3N; }
+    log_verbose "Executing: $cmd"
+    start_timer
 
-format_duration_ms() {
-    local ms="${1:-0}"
-    awk "BEGIN {printf \"%.1f\", ${ms}/1000}"
-}
+    if [[ "$VERBOSE" == true ]]; then
+        eval "$cmd" 2>&1 | tee -a "$LOG_FILE"
+        local status=${PIPESTATUS[0]}
+    else
+        eval "$cmd" >> "$LOG_FILE" 2>&1
+        local status=$?
+    fi
 
-operation_summary() {
-    local label="${1:-}" start_ms="${2:-0}" outfile="${3:-}" extra="${4:-}"
-    local duration_ms=$(( $(date +%s%3N) - start_ms ))
     local duration
-    duration=$(format_duration_ms "$duration_ms")
-    [[ "$QUIET" -eq 1 || "$JSON_OUTPUT" -eq 1 ]] || draw_line "─" 75
-    log_success "${label} complete in ${duration}s"
-    [[ -n "$outfile" ]] && log_info "Results saved: $outfile"
-    [[ -n "$extra" ]] && log_info "$extra"
+    duration=$(end_timer)
+
+    if ((status == 0)); then
+        log_verbose "$description completed in $duration"
+    else
+        log_error "$description failed (exit code: $status) after $duration"
+    fi
+    return $status
 }
 
 check_target_reachable() {
@@ -319,6 +462,124 @@ check_target_reachable() {
         log_warning "Target did not respond to ping"
         return 1
     fi
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# CONFIGURATION
+#═══════════════════════════════════════════════════════════════════════════════
+
+declare -A DEFAULT_CONFIG=(
+    [LOG_LEVEL]="INFO"
+    [VERBOSE]="false"
+    [AUTO_UPDATE_CHECK]="true"
+    [DEFAULT_SCAN_TYPE]="standard"
+    [DEFAULT_TIMING]="T3"
+    [SAVE_OUTPUT]="true"
+    [OUTPUT_FORMAT]="txt"
+    [COLOR_THEME]="blood"
+    [CONFIRM_DANGEROUS]="true"
+    [MAX_HISTORY]="50"
+    [SESSION_AUTOSAVE]="true"
+)
+
+init_config() {
+    mkdir -p "$CONFIG_DIR" "$LOG_DIR" "$OUTPUT_DIR" "$LOOT_DIR" "$SESSIONS_DIR"
+
+    if [[ ! -f "$CONFIG_FILE" ]]; then
+        log_verbose "Creating default configuration"
+        for key in "${!DEFAULT_CONFIG[@]}"; do
+            echo "$key=${DEFAULT_CONFIG[$key]}" >> "$CONFIG_FILE"
+        done
+    fi
+
+    # shellcheck source=/dev/null
+    [[ -f "$CONFIG_FILE" ]] && source "$CONFIG_FILE"
+
+    LOG_LEVEL=$(config_get LOG_LEVEL "$LOG_LEVEL")
+    VERBOSE=$(config_get VERBOSE "$VERBOSE")
+}
+
+config_get() {
+    local key="$1"; local default_val="${2:-${DEFAULT_CONFIG[$key]:-}}"
+    local value
+    value=$(grep -E "^$key=" "$CONFIG_FILE" 2>/dev/null | head -1 | cut -d= -f2-)
+    echo "${value:-$default_val}"
+}
+
+config_set() {
+    local key="$1" value="$2"
+    if grep -q "^$key=" "$CONFIG_FILE" 2>/dev/null; then
+        sed -i "s/^$key=.*/$key=$value/" "$CONFIG_FILE"
+    else
+        echo "$key=$value" >> "$CONFIG_FILE"
+    fi
+    log_verbose "Config updated: $key=$value"
+}
+
+config_reset() {
+    rm -f "$CONFIG_FILE"
+    init_config
+    log_success "Configuration reset to defaults"
+}
+
+config_show() {
+    echo
+    echo -e "    ${C_CYAN}Current configuration${C_RESET}"
+    while IFS='=' read -r key value; do
+        [[ -z "$key" || "$key" =~ ^# ]] && continue
+        printf "    ${C_GHOST}%-24s${C_RESET} ${C_GREEN}%s${C_RESET}\n" "$key" "$value"
+    done < "$CONFIG_FILE"
+    echo
+}
+
+config_edit() {
+    while true; do
+        clear
+        echo
+        echo -e "    ${C_CYAN}╔═══════════════════════════════════════════════════════════════════════╗${C_RESET}"
+        echo -e "    ${C_CYAN}║${C_RESET}                    ${C_FIRE}⚙️  CONFIGURATION${C_RESET}                               ${C_CYAN}║${C_RESET}"
+        echo -e "    ${C_CYAN}╚═══════════════════════════════════════════════════════════════════════╝${C_RESET}"
+        echo
+
+        local i=1
+        declare -a keys=()
+        while IFS='=' read -r key value; do
+            [[ -z "$key" || "$key" =~ ^# ]] && continue
+            keys+=("$key")
+            printf "    ${C_GHOST}[%2d]${C_RESET} %-25s ${C_SHADOW}= ${C_GREEN}%s${C_RESET}\n" $i "$key" "$value"
+            ((i++))
+        done < "$CONFIG_FILE"
+
+        echo
+        echo -e "    ${C_GHOST}[R]${C_RESET} Reset to defaults"
+        echo -e "    ${C_GHOST}[B]${C_RESET} Back"
+        echo
+        echo -ne "    ${C_PROMPT}Select option to edit: ${C_RESET}"
+        read -r choice
+
+        case "$choice" in
+            r|R)
+                if confirm "Reset all settings to default?" "n"; then
+                    config_reset
+                fi
+                ;;
+            b|B|q|Q)
+                return
+                ;;
+            [0-9]*)
+                if ((choice >= 1 && choice <= ${#keys[@]})); then
+                    local key_sel="${keys[$((choice-1))]}"
+                    local current
+                    current=$(config_get "$key_sel")
+                    echo
+                    local new_value
+                    new_value=$(prompt_input "New value for $key_sel" "" "$current")
+                    config_set "$key_sel" "$new_value"
+                    log_success "Updated $key_sel"
+                fi
+                ;;
+        esac
+    done
 }
 
 summarize_nmap_results() {
@@ -848,6 +1109,72 @@ check_legal() {
     fi
 }
 
+first_run_wizard() {
+    clear
+    echo
+    echo -e "    ${C_FIRE}╔═══════════════════════════════════════════════════════════════════════╗${C_RESET}"
+    echo -e "    ${C_FIRE}║${C_RESET}                                                                       ${C_FIRE}║${C_RESET}"
+    echo -e "    ${C_FIRE}║${C_RESET}    ${C_RED}███╗   ██╗███████╗████████╗██████╗ ███████╗ █████╗ ██████╗ ███████╗██████╗ ${C_RESET}    ${C_FIRE}║${C_RESET}"
+    echo -e "    ${C_FIRE}║${C_RESET}    ${C_RED}████╗  ██║██╔════╝╚══██╔══╝██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔════╝██╔══██╗${C_RESET}    ${C_FIRE}║${C_RESET}"
+    echo -e "    ${C_FIRE}║${C_RESET}    ${C_RED}██╔██╗ ██║█████╗     ██║   ██████╔╝█████╗  ███████║██████╔╝█████╗  ██████╔╝${C_RESET}    ${C_FIRE}║${C_RESET}"
+    echo -e "    ${C_FIRE}║${C_RESET}    ${C_RED}██║╚██╗██║██╔══╝     ██║   ██╔══██╗██╔══╝  ██╔══██║██╔═══╝ ██╔══╝  ██╔══██╗${C_RESET}    ${C_FIRE}║${C_RESET}"
+    echo -e "    ${C_FIRE}║${C_RESET}    ${C_RED}██║ ╚████║███████╗   ██║   ██║  ██║███████╗██║  ██║██║     ███████╗██║  ██║${C_RESET}    ${C_FIRE}║${C_RESET}"
+    echo -e "    ${C_FIRE}║${C_RESET}    ${C_RED}╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝${C_RESET}    ${C_FIRE}║${C_RESET}"
+    echo -e "    ${C_FIRE}║${C_RESET}                                                                       ${C_FIRE}║${C_RESET}"
+    echo -e "    ${C_FIRE}║${C_RESET}                  ${C_CYAN}Welcome to NETREAPER v${VERSION}${C_RESET}                          ${C_FIRE}║${C_RESET}"
+    echo -e "    ${C_FIRE}║${C_RESET}           ${C_SHADOW}\"Some tools scan. Some tools attack. I do both.\"${C_RESET}            ${C_FIRE}║${C_RESET}"
+    echo -e "    ${C_FIRE}║${C_RESET}                                                                       ${C_FIRE}║${C_RESET}"
+    echo -e "    ${C_FIRE}╚═══════════════════════════════════════════════════════════════════════╝${C_RESET}"
+    echo
+
+    echo -e "    ${C_SHADOW}This appears to be your first time running NETREAPER.${C_RESET}"
+    echo -e "    ${C_SHADOW}Let me help you get set up.${C_RESET}"
+    echo
+
+    show_legal
+    read -r response
+    if [[ "$response" != "I ACCEPT" ]]; then
+        log_fatal "You must accept the terms to use NETREAPER"
+    fi
+    mkdir -p "$(dirname "$LEGAL_FILE")"
+    echo "$(date -Iseconds) | $(whoami)@$(hostname) | Accepted" > "$LEGAL_FILE"
+    log_success "Terms accepted"
+
+    echo
+    echo -e "    ${C_CYAN}━━━ Configuration ━━━${C_RESET}"
+    echo
+
+    if confirm "Enable verbose output by default?" "n"; then
+        config_set VERBOSE true
+        log_info "Verbose mode enabled"
+    fi
+
+    if confirm "Check for updates on startup?" "y"; then
+        config_set AUTO_UPDATE_CHECK true
+        log_info "Auto-update check enabled"
+    fi
+
+    echo
+    if confirm "Install essential tools now? (recommended)" "y"; then
+        echo
+        log_info "Installing essential tools..."
+        cmd_install_quick || true
+    fi
+
+    config_set FIRST_RUN_COMPLETE true
+    config_set SETUP_DATE "$(date '+%Y-%m-%d')"
+
+    echo
+    echo -e "    ${C_GREEN}╔═══════════════════════════════════════════════════════════════════════╗${C_RESET}"
+    echo -e "    ${C_GREEN}║${C_RESET}                  ${C_FIRE}✓ SETUP COMPLETE${C_RESET}                                   ${C_GREEN}║${C_RESET}"
+    echo -e "    ${C_GREEN}╚═══════════════════════════════════════════════════════════════════════╝${C_RESET}"
+    echo
+    echo -e "    ${C_SHADOW}Type ${C_CYAN}netreaper help${C_RESET}${C_SHADOW} to see available commands${C_RESET}"
+    echo -e "    ${C_SHADOW}Type ${C_CYAN}netreaper${C_RESET}${C_SHADOW} to launch the interactive menu${C_RESET}"
+    echo
+    read -rp "    Press Enter to continue..."
+}
+
 #═══════════════════════════════════════════════════════════════════════════════
 # UTILITIES
 #═══════════════════════════════════════════════════════════════════════════════
@@ -893,37 +1220,241 @@ run_with_sudo() {
     sudo -E bash -c "$(declare -f); ${env_decls}set -uo pipefail; ${func_name}${args_quoted}"
 }
 
-require_root() {
-    if is_root; then
-        return 0
-    fi
+confirm() {
+    local message="${1:-Continue?}" default="${2:-n}" prompt
+    if [[ "$default" == "y" ]]; then prompt="[Y/n]"; else prompt="[y/N]"; fi
+    echo -ne "    ${C_PROMPT}$message $prompt: ${C_RESET}"
+    read -r response
+    response="${response:-$default}"
+    [[ "${response,,}" == "y" || "${response,,}" == "yes" ]]
+}
 
-    log_error "This operation requires root privileges"
-    echo -ne "    ${C_PROMPT}Elevate with sudo? [Y/n]: ${C_RESET}"
-    read -r confirm
-    if [[ "${confirm,,}" != "n" ]]; then
-        log_info "Re-run with sudo to continue."
-    else
-        log_info "Operation cancelled"
+confirm_dangerous() {
+    local message="$1" confirm_word="${2:-YES}"
+    echo
+    echo -e "    ${C_RED}╔══════════════════════════════════════════════════════════════╗${C_RESET}"
+    echo -e "    ${C_RED}║${C_RESET}  ${C_YELLOW}⚠️  WARNING: POTENTIALLY DANGEROUS OPERATION  ⚠️${C_RESET}            ${C_RED}║${C_RESET}"
+    echo -e "    ${C_RED}╚══════════════════════════════════════════════════════════════╝${C_RESET}"
+    echo
+    echo -e "    ${C_SHADOW}$message${C_RESET}"
+    echo
+    echo -ne "    ${C_YELLOW}Type '${confirm_word}' to confirm: ${C_RESET}"
+    read -r response
+    [[ "$response" == "$confirm_word" ]]
+}
+
+select_option() {
+    local prompt="$1"; shift; local options=("$@")
+    echo
+    echo -e "    ${C_CYAN}$prompt${C_RESET}"
+    echo
+    local i=1
+    for opt in "${options[@]}"; do
+        echo -e "    ${C_GHOST}[$i]${C_RESET} $opt"
+        ((i++))
+    done
+    echo
+    echo -ne "    ${C_PROMPT}Select [1-${#options[@]}]: ${C_RESET}"
+    read -r choice
+    if [[ "$choice" =~ ^[0-9]+$ ]] && ((choice >= 1 && choice <= ${#options[@]})); then
+        echo "${options[$((choice-1))]}"
+        return 0
     fi
     return 1
 }
 
+prompt_input() {
+    local message="$1" validator="${2:-}" default="${3:-}" display_default=""
+    [[ -n "$default" ]] && display_default=" ${C_SHADOW}[$default]${C_RESET}"
+    while true; do
+        echo -ne "    ${C_PROMPT}$message${display_default}: ${C_RESET}"
+        read -r input
+        input="${input:-$default}"
+        if [[ -z "$input" ]]; then
+            log_warning "Input required"
+            continue
+        fi
+        if [[ -n "$validator" ]]; then
+            if $validator "$input"; then
+                echo "$input"
+                return 0
+            else
+                log_warning "Invalid input, please try again"
+                continue
+            fi
+        fi
+        echo "$input"
+        return 0
+    done
+}
+
+validate_ip() { [[ "$1" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; }
+validate_cidr() { [[ "$1" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/[0-9]{1,2}$ ]]; }
+validate_domain() { [[ "$1" =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$ ]]; }
+validate_interface() { ip link show "$1" &>/dev/null; }
+validate_file_exists() { [[ -f "$1" ]]; }
+validate_port() { local p="$1"; [[ "$p" =~ ^[0-9]+$ ]] && ((p >= 1 && p <= 65535)); }
+
+is_root() { [[ $EUID -eq 0 ]]; }
+can_sudo() { sudo -n true 2>/dev/null; }
+
+get_privilege_level() {
+    if is_root; then echo "root"; elif can_sudo; then echo "sudo"; else echo "user"; fi
+}
+
+elevate_privileges() {
+    if is_root; then return 0; fi
+    log_warning "This operation requires root privileges"
+    echo
+    if confirm "Elevate to root?" "y"; then
+        sudo -v && log_success "Privileges elevated" && return 0
+        log_error "Failed to elevate privileges"; return 1
+    fi
+    return 1
+}
+
+run_privileged() {
+    local cmd="$*"
+    if is_root; then
+        eval "$cmd"
+    elif can_sudo; then
+        sudo bash -c "$cmd"
+    else
+        if elevate_privileges; then
+            sudo bash -c "$cmd"
+        else
+            log_error "Cannot run privileged command without root access"
+            return 1
+        fi
+    fi
+}
+
+require_root() {
+    local reason="${1:-This operation requires root privileges}"
+    if is_root; then
+        return 0
+    fi
+    echo
+    echo -e "    ${C_YELLOW}╔═══════════════════════════════════════════════════════════════╗${C_RESET}"
+    echo -e "    ${C_YELLOW}║${C_RESET}  ${C_RED}🔒 ROOT ACCESS REQUIRED${C_RESET}                                     ${C_YELLOW}║${C_RESET}"
+    echo -e "    ${C_YELLOW}╚═══════════════════════════════════════════════════════════════╝${C_RESET}"
+    echo
+    echo -e "    ${C_SHADOW}Reason: $reason${C_RESET}"
+    echo
+    if confirm "Run with sudo?" "y"; then
+        sudo -v || { log_error "Authentication failed"; return 1; }
+        return 0
+    fi
+    return 1
+}
+
+drop_privileges() {
+    if is_root && [[ -n "$SUDO_USER" ]]; then
+        log_verbose "Dropping privileges to $SUDO_USER"
+        su - "$SUDO_USER" -c "$*"
+    else
+        eval "$*"
+    fi
+}
+
 check_tool() {
-    local tool="${1:-}"
-    [[ -z "$tool" ]] && return 1
-    if command -v "$tool" &>/dev/null; then
+    local tool="${1:-}"; [[ -z "$tool" ]] && return 1
+    if is_tool_installed "$tool"; then
+        return 0
+    fi
+    log_warning "Tool not installed: $tool"
+    echo -e "    ${C_SHADOW}Install: sudo apt install $tool${C_RESET}"
+    return 1
+}
+
+get_tool_info() {
+    local tool="$1" field="$2"
+    local info="${TOOL_INFO[$tool]}"
+    [[ -z "$info" ]] && return 1
+    case "$field" in
+        binary) echo "${info%%:*}" ;;
+        package) echo "$info" | cut -d: -f2 ;;
+        method) echo "$info" | cut -d: -f3 ;;
+        category) echo "$info" | cut -d: -f4 ;;
+        description) echo "$info" | cut -d: -f5- ;;
+        *) echo "$info" ;;
+    esac
+}
+
+install_tool() {
+    local tool="$1"
+    local method package
+    method=$(get_tool_info "$tool" method) || { log_error "Unknown tool: $tool"; return 1; }
+    package=$(get_tool_info "$tool" package)
+
+    log_info "Installing $tool ($method)..."
+    case "$method" in
+        apt)
+            run_privileged "DEBIAN_FRONTEND=noninteractive apt install -y $package" || return 1
+            ;;
+        pip)
+            run_cmd "pip install $package" "pip3 install $package --user" || return 1
+            ;;
+        pipx)
+            run_cmd "pipx install $package" "pipx install $package" || return 1
+            ;;
+        gem)
+            run_cmd "gem install $package" "gem install $package" || return 1
+            ;;
+        go)
+            run_cmd "go install $package" "GO111MODULE=on go install $package" || return 1
+            ;;
+        github|git)
+            log_warning "Manual install required for $tool (method: $method)"
+            return 1
+            ;;
+        *)
+            log_error "Unknown install method: $method"
+            return 1
+            ;;
+    esac
+
+    if is_tool_installed "$tool"; then
+        log_success "$tool installed"
+        log_audit "INSTALL" "$tool" "SUCCESS"
         return 0
     else
-        log_warning "Tool not found: $tool"
-        echo -e "    ${C_SHADOW}Install: sudo apt install $tool${C_RESET}"
+        log_error "$tool installation failed"
+        log_audit "INSTALL" "$tool" "FAILED"
         return 1
     fi
 }
 
+run_tool() {
+    local tool="$1"; shift
+    local args=($@)
+    log_verbose "Running: $tool ${args[*]}"
+    log_audit "RUN_TOOL" "$tool" "STARTED"
+    if ! check_tool "$tool"; then
+        if confirm "Install $tool now?" "y"; then
+            install_tool "$tool" || return 1
+        else
+            log_error "Cannot proceed without $tool"
+            return 1
+        fi
+    fi
+    local binary
+    binary=$(get_tool_info "$tool" binary 2>/dev/null || echo "$tool")
+    start_timer
+    "$binary" "${args[@]}"
+    local status=$?
+    local duration
+    duration=$(end_timer)
+    if ((status == 0)); then
+        log_audit "RUN_TOOL" "$tool" "SUCCESS:$duration"
+    else
+        log_audit "RUN_TOOL" "$tool" "FAILED:$status:$duration"
+    fi
+    return $status
+}
+
 is_private_ip() {
-    local ip="${1:-}"
-    [[ -z "$ip" ]] && return 1
+    local ip="${1:-}"; [[ -z "$ip" ]] && return 1
     [[ "$ip" =~ ^10\. ]] && return 0
     [[ "$ip" =~ ^172\.(1[6-9]|2[0-9]|3[01])\. ]] && return 0
     [[ "$ip" =~ ^192\.168\. ]] && return 0
@@ -933,16 +1464,11 @@ is_private_ip() {
 
 validate_target() {
     local target="${1:-}"
-    
     [[ -z "$target" ]] && { log_error "No target specified"; return 1; }
-    
-    # Block .gov and .mil
     if [[ "$target" =~ \.(gov|mil)$ ]] || [[ "$target" =~ \.(gov|mil)/ ]]; then
         log_error "Targeting government/military domains is prohibited"
         return 1
     fi
-    
-    # Warn on external targets
     if ! is_private_ip "$target" && [[ ! "$target" =~ ^(localhost|127\.) ]]; then
         echo
         echo -e "    ${C_FIRE}⚠  EXTERNAL TARGET DETECTED${C_RESET}"
@@ -951,24 +1477,56 @@ validate_target() {
         read -r confirm
         [[ "${confirm,,}" == "yes" ]] || return 1
     fi
-    
     return 0
 }
 
 get_target() {
+    local target_type="${1:-any}"
     echo
-    echo -ne "    ${C_FIRE}◎ TARGET: ${C_RESET}"
-    read -r TARGET
-    
-    [[ -z "$TARGET" ]] && { log_error "No target specified"; return 1; }
+    echo -e "    ${C_CYAN}╔═══════════════════════════════════════════════════════════════╗${C_RESET}"
+    echo -e "    ${C_CYAN}║${C_RESET}                    ${C_FIRE}🎯 TARGET SELECTION${C_RESET}                       ${C_CYAN}║${C_RESET}"
+    echo -e "    ${C_CYAN}╚═══════════════════════════════════════════════════════════════╝${C_RESET}"
+    echo
+
+    if [[ -f "${CONFIG_DIR}/history" ]]; then
+        echo -e "    ${C_SHADOW}Recent targets:${C_RESET}"
+        tail -5 "${CONFIG_DIR}/history" | while read -r t; do
+            echo -e "      ${C_GHOST}• $t${C_RESET}"
+        done
+        echo
+    fi
+
+    local default_gateway local_subnet
+    default_gateway=$(ip route | grep default | awk '{print $3}' | head -1)
+    local_subnet=$(ip route | grep -v default | grep -E '^[0-9]' | head -1 | awk '{print $1}')
+    echo -e "    ${C_SHADOW}Quick options:${C_RESET}"
+    [[ -n "$default_gateway" ]] && echo -e "      ${C_GHOST}• Gateway: $default_gateway${C_RESET}"
+    [[ -n "$local_subnet" ]] && echo -e "      ${C_GHOST}• Local subnet: $local_subnet${C_RESET}"
+    echo
+
+    local validator=""
+    case "$target_type" in
+        ip) validator="validate_ip" ;;
+        cidr) validator="validate_cidr" ;;
+        domain) validator="validate_domain" ;;
+        *) validator="" ;;
+    esac
+
+    local target
+    target=$(prompt_input "Enter target" "$validator") || return 1
+
+    TARGET="$target"
     TARGET="$(resolve_target_alias "$TARGET")"
     validate_target "$TARGET" || return 1
     record_history "$TARGET"
-    
-    # Create output file path
+
+    local max_hist
+    max_hist=$(config_get MAX_HISTORY 50)
+    tail -n "$max_hist" "${CONFIG_DIR}/history" > "${CONFIG_DIR}/history.tmp" 2>/dev/null || true
+    mv "${CONFIG_DIR}/history.tmp" "${CONFIG_DIR}/history" 2>/dev/null || true
+
     local safe_target="${TARGET//[^a-zA-Z0-9._-]/_}"
     OUTPUT_FILE="${OUTPUT_DIR}/${safe_target}_$(date +%Y%m%d_%H%M%S)"
-    
     return 0
 }
 
@@ -991,6 +1549,183 @@ pause() {
     echo
     echo -ne "    ${C_SHADOW}Press Enter to continue...${C_RESET}"
     read -r
+}
+
+#═══════════════════════════════════════════════════════════════════════════════
+# GUIDED WIZARDS
+#═══════════════════════════════════════════════════════════════════════════════
+
+build_and_run_scan() {
+    local target="$1" scan_choice="$2" timing_choice="$3" save_output="$4" output_file="$5"
+    local args=("$target")
+
+    case "$scan_choice" in
+        Quick*) args=("$target" --quick) ;;
+        Standard*) args=("$target") ;;
+        Full*) args=("$target" --full) ;;
+        Stealth*) args=("$target" --stealth) ;;
+        Vulnerability*) args=("$target" --vuln) ;;
+        Custom*)
+            local extra
+            extra=$(prompt_input "Custom flags" "" "")
+            args=("$target" $extra)
+            ;;
+    esac
+
+    log_info "Timing profile: ${timing_choice:-default}"
+    if [[ "$save_output" == true && -n "$output_file" ]]; then
+        OUTPUT_FILE="$output_file"
+    fi
+
+    cli_scan "${args[@]}"
+}
+
+scan_wizard() {
+    clear
+    echo
+    echo -e "    ${C_CYAN}╔═══════════════════════════════════════════════════════════════════════╗${C_RESET}"
+    echo -e "    ${C_CYAN}║${C_RESET}                    ${C_FIRE}🔍 SCAN WIZARD${C_RESET}                                  ${C_CYAN}║${C_RESET}"
+    echo -e "    ${C_CYAN}║${C_RESET}           ${C_SHADOW}Let me guide you through the scanning process${C_RESET}           ${C_CYAN}║${C_RESET}"
+    echo -e "    ${C_CYAN}╚═══════════════════════════════════════════════════════════════════════╝${C_RESET}"
+    echo
+
+    echo -e "    ${C_CYAN}━━━ Step 1/5: Target Selection ━━━${C_RESET}"
+    get_target || { log_error "No target specified"; return 1; }
+    local target="$TARGET"
+
+    echo
+    echo -e "    ${C_CYAN}━━━ Step 2/5: Scan Type ━━━${C_RESET}"
+    echo
+    local scan_type
+    scan_type=$(select_option "What type of scan do you want to run?" \
+        "Quick Scan - Fast discovery (top 100 ports)" \
+        "Standard Scan - Common ports with service detection" \
+        "Full Scan - All 65535 ports (slow but thorough)" \
+        "Stealth Scan - Low and slow to avoid detection" \
+        "Vulnerability Scan - Check for known vulnerabilities" \
+        "Custom - Configure manually")
+
+    echo
+    echo -e "    ${C_CYAN}━━━ Step 3/5: Timing Profile ━━━${C_RESET}"
+    echo
+    local timing
+    timing=$(select_option "How fast should we scan?" \
+        "Paranoid (T0) - Extremely slow, evades IDS" \
+        "Sneaky (T1) - Very slow, stealthy" \
+        "Polite (T2) - Slower, less bandwidth" \
+        "Normal (T3) - Default balanced speed" \
+        "Aggressive (T4) - Fast, may miss some" \
+        "Insane (T5) - Maximum speed, noisy")
+
+    echo
+    echo -e "    ${C_CYAN}━━━ Step 4/5: Output Options ━━━${C_RESET}"
+    echo
+    local save_output=false output_file=""
+    if confirm "Save results to file?" "y"; then
+        save_output=true
+        output_file=$(prompt_input "Output filename" "" "scan_${target//[.\//]/_}_$(date +%Y%m%d_%H%M%S)")
+    fi
+
+    echo
+    echo -e "    ${C_CYAN}━━━ Step 5/5: Confirm ━━━${C_RESET}"
+    echo
+    echo -e "    ${C_SHADOW}Target:${C_RESET}     $target"
+    echo -e "    ${C_SHADOW}Scan Type:${C_RESET}  $scan_type"
+    echo -e "    ${C_SHADOW}Timing:${C_RESET}     $timing"
+    echo -e "    ${C_SHADOW}Output:${C_RESET}     ${output_file:-stdout only}"
+    echo
+
+    if ! confirm "Proceed with scan?" "y"; then
+        log_info "Scan cancelled by user"
+        return 0
+    fi
+
+    build_and_run_scan "$target" "$scan_type" "$timing" "$save_output" "$output_file"
+}
+
+wifi_wizard() {
+    clear
+    echo
+    echo -e "    ${C_GREEN}╔═══════════════════════════════════════════════════════════════════════╗${C_RESET}"
+    echo -e "    ${C_GREEN}║${C_RESET}                    ${C_FIRE}📡 WIFI ATTACK WIZARD${C_RESET}                          ${C_GREEN}║${C_RESET}"
+    echo -e "    ${C_GREEN}║${C_RESET}           ${C_SHADOW}Guided wireless network assessment${C_RESET}                      ${C_GREEN}║${C_RESET}"
+    echo -e "    ${C_GREEN}╚═══════════════════════════════════════════════════════════════════════╝${C_RESET}"
+    echo
+
+    require_root "WiFi operations require root for interface control" || return 1
+
+    echo -e "    ${C_CYAN}━━━ Step 1/4: Select Wireless Interface ━━━${C_RESET}"
+    echo
+    local interfaces=($(iw dev | grep Interface | awk '{print $2}'))
+    if [[ ${#interfaces[@]} -eq 0 ]]; then
+        log_error "No wireless interfaces found"
+        echo -e "    ${C_SHADOW}Make sure you have a WiFi adapter connected${C_RESET}"
+        return 1
+    fi
+
+    echo -e "    ${C_SHADOW}Available wireless interfaces:${C_RESET}"
+    for iface in "${interfaces[@]}"; do
+        local mode mac
+        mode=$(iw dev "$iface" info 2>/dev/null | grep type | awk '{print $2}')
+        mac=$(ip link show "$iface" | grep ether | awk '{print $2}')
+        echo -e "      ${C_GHOST}• $iface ${C_SHADOW}($mode, $mac)${C_RESET}"
+    done
+    echo
+
+    local interface
+    interface=$(prompt_input "Enter interface" "validate_interface" "${interfaces[0]}") || return 1
+
+    echo
+    echo -e "    ${C_CYAN}━━━ Step 2/4: Select Attack Type ━━━${C_RESET}"
+    echo
+    local attack_type
+    attack_type=$(select_option "What do you want to do?" \
+        "Reconnaissance - Scan for nearby networks" \
+        "Handshake Capture - Capture WPA handshake for cracking" \
+        "Deauthentication - Kick clients off a network" \
+        "WPS Attack - Exploit WPS vulnerabilities" \
+        "Evil Twin - Create fake access point" \
+        "Full Auto - Let wifite handle everything")
+
+    local target_bssid="" target_channel=""
+    if [[ "$attack_type" != *"Reconnaissance"* && "$attack_type" != *"Full Auto"* ]]; then
+        echo
+        echo -e "    ${C_CYAN}━━━ Step 3/4: Target Network ━━━${C_RESET}"
+        echo
+        echo -e "    ${C_SHADOW}Scanning for networks...${C_RESET}"
+        timeout 10 airodump-ng "$interface" --write /tmp/wifi_scan --output-format csv &>/dev/null &
+        show_spinner $! "Scanning"
+        if [[ -f /tmp/wifi_scan-01.csv ]]; then
+            echo
+            echo -e "    ${C_SHADOW}Available networks:${C_RESET}"
+            awk -F',' 'NR>2 && $1 ~ /^[0-9A-Fa-f:]+$/ {print "      " NR-2 ". " $14 " (" $1 ") Ch:" $4 " " $6}' /tmp/wifi_scan-01.csv | head -10
+            rm -f /tmp/wifi_scan*
+        fi
+        echo
+        target_bssid=$(prompt_input "Enter target BSSID (MAC)" "")
+        target_channel=$(prompt_input "Enter channel" "" "6")
+    fi
+
+    echo
+    echo -e "    ${C_CYAN}━━━ Step 4/4: Confirm ━━━${C_RESET}"
+    echo
+    echo -e "    ${C_SHADOW}Interface:${C_RESET}  $interface"
+    echo -e "    ${C_SHADOW}Attack:${C_RESET}     $attack_type"
+    [[ -n "$target_bssid" ]] && echo -e "    ${C_SHADOW}Target:${C_RESET}     $target_bssid (Ch: $target_channel)"
+    echo
+
+    if confirm_dangerous "This will transmit potentially illegal WiFi frames. Only proceed if you have authorization."; then
+        case "$attack_type" in
+            Reconnaissance*) cli_wifi --scan "$interface" ;;
+            Full*) cli_wifi --scan "$interface" ;;
+            *)
+                log_warning "This attack type is not fully automated yet. Opening WiFi menu."
+                menu_wireless "$interface"
+                ;;
+        esac
+    else
+        log_info "Attack cancelled"
+    fi
 }
 
 #══════════════════════════════════════════════════════════════════════════════
@@ -4125,48 +4860,78 @@ cmd_run_direct() {
     operation_summary "Direct command" "$start_ms" "${LOG_DIR}/netreaper.log"
 }
 
-show_help() {
-    clear
-    show_mini_banner
+show_help_main() {
     echo
-    echo -e "    ${C_SKULL}NETREAPER${C_RESET} - Network Security & WiFi Assault Toolkit"
+    echo -e "    ${C_FIRE}☠ NETREAPER v${VERSION}${C_RESET} - Network Security Toolkit"
     echo
-    echo -e "    ${C_GHOST}USAGE:${C_RESET}"
-    echo "        $SCRIPT_NAME [--quiet|--json] [command] [options] [target]"
+    echo -e "    ${C_CYAN}USAGE:${C_RESET}"
+    echo -e "        netreaper [options] <command> [arguments]"
     echo
-    echo -e "    ${C_GHOST}COMMANDS:${C_RESET}"
-    echo "        scan <target>       Port scanning (--full/--stealth/--vuln/--udp)"
-    echo "        wifi <mode> <if>    WiFi monitor/managed/scan"
-    echo "        crack <cap>         Handshake cracking (hashcat/aircrack/john/cowpatty)"
-    echo "        session <action>    start|resume|status|list|export|notes"
-    echo "        history             Show target history"
-    echo "        favorite            Manage favorites (add/list/use)"
-    echo "        alias               Manage aliases"
-    echo "        profile             Manage scan presets"
-    echo "        discover [net]      Discover hosts and pick target"
-    echo "        export <f> <fmt>    Export to json/csv/html/md"
-    echo "        schedule            Manage scheduled scans"
-    echo "        diff <f1> <f2>      Compare two scan outputs"
-    echo "        status              Show installed tools (--compact | --json | --category <name>)"
-    echo "        install             Install security tools"
-    echo "        menu                Interactive menu (default)"
-    echo "        help                Show this help"
-    echo "        version             Show version"
+    echo -e "    ${C_CYAN}OPTIONS:${C_RESET}"
+    echo -e "        -v, --verbose      Enable verbose output"
+    echo -e "        -q, --quiet        Suppress non-error output"
+    echo -e "        --no-color         Disable colored output"
+    echo -e "        --debug            Enable debug mode"
+    echo -e "        --version          Show version"
+    echo -e "        -h, --help         Show this help"
     echo
-    echo -e "    ${C_GHOST}EXAMPLES:${C_RESET}"
-    echo "        $SCRIPT_NAME scan 192.168.1.0/24 --full"
-    echo "        $SCRIPT_NAME wifi --monitor wlan0"
-    echo "        $SCRIPT_NAME crack handshake.cap --hashcat-rules --wordlist custom.txt"
-    echo "        $SCRIPT_NAME session start"
-    echo "        $SCRIPT_NAME profile save fast --quick"
-    echo "        $SCRIPT_NAME discover 192.168.1.0/24"
-    echo "        $SCRIPT_NAME schedule add '0 2 * * *' 'scan 192.168.1.1 --full'"
+    echo -e "    ${C_CYAN}COMMANDS:${C_RESET}"
+    echo -e "        ${C_GREEN}menu${C_RESET}              Launch interactive menu (default)"
+    echo -e "        ${C_GREEN}wizard${C_RESET} [type]     Guided wizard (scan/wifi)"
+    echo -e "        ${C_GREEN}scan${C_RESET} <target>     Scan a target"
+    echo -e "        ${C_GREEN}discover${C_RESET} [subnet] Discover hosts"
+    echo -e "        ${C_GREEN}wifi${C_RESET}              WiFi actions"
+    echo -e "        ${C_GREEN}status${C_RESET}            Tool status (--compact|--json|--category)"
+    echo -e "        ${C_GREEN}install${C_RESET}           Launch installer"
+    echo -e "        ${C_GREEN}config${C_RESET}            Config management"
+    echo -e "        ${C_GREEN}session${C_RESET}           Session management"
+    echo -e "        ${C_GREEN}update${C_RESET}            Check for updates"
+    echo -e "        ${C_GREEN}logs${C_RESET}              View logs"
+    echo -e "        ${C_GREEN}help${C_RESET} [topic]      Show help"
+    echo
+    echo -e "    ${C_CYAN}EXAMPLES:${C_RESET}"
+    echo -e "        netreaper                           # Interactive menu"
+    echo -e "        netreaper scan 10.0.0.0/24 --full   # Full subnet scan"
+    echo -e "        netreaper wizard scan               # Guided scan wizard"
+    echo -e "        netreaper wifi --monitor wlan0      # Enable monitor mode"
+    echo -e "        netreaper status --json             # JSON status output"
     echo
     echo -e "    ${C_SHADOW}Config: $CONFIG_DIR${C_RESET}"
     echo -e "    ${C_SHADOW}Logs:   $LOG_DIR${C_RESET}"
     echo -e "    ${C_SHADOW}Output: $OUTPUT_DIR${C_RESET}"
     echo
-    pause
+}
+
+show_help_scan() {
+    echo
+    echo -e "    ${C_CYAN}Scan Help${C_RESET}"
+    echo -e "    netreaper scan <target> [--quick|--full|--stealth|--vuln|--udp]"
+    echo -e "    netreaper wizard scan    # guided flow"
+    echo
+}
+
+show_help_wifi() {
+    echo
+    echo -e "    ${C_CYAN}WiFi Help${C_RESET}"
+    echo -e "    netreaper wifi --monitor <iface>"
+    echo -e "    netreaper wifi --managed <iface>"
+    echo -e "    netreaper wifi --scan <iface>"
+    echo -e "    netreaper wizard wifi    # guided flow"
+    echo
+}
+
+show_help() {
+    local topic="${1:-main}"
+    case "$topic" in
+        scan) show_help_scan ;;
+        wifi) show_help_wifi ;;
+        config) config_show ;;
+        *) show_help_main ;;
+    esac
+}
+
+show_version() {
+    echo "$SCRIPT_NAME v$VERSION ($CODENAME)"
 }
 
 #═══════════════════════════════════════════════════════════════════════════════
@@ -4435,13 +5200,13 @@ self_uninstall() {
 #═══════════════════════════════════════════════════════════════════════════════
 
 main() {
-    # Handle install/uninstall first
     case "${1:-}" in
         --install)   self_install; exit 0 ;;
         --uninstall) self_uninstall; exit 0 ;;
     esac
 
-    load_config
+    init_logging
+    init_config
     ensure_builtin_aliases
 
     if expand_aliases "$@"; then
@@ -4450,37 +5215,50 @@ main() {
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -q|--quiet) QUIET=1; shift ;;
-            --json) JSON_OUTPUT=1; QUIET=1; NO_COLOR=1; shift ;;
+            -v|--verbose) VERBOSE=true; LOG_LEVEL="DEBUG"; shift ;;
+            -q|--quiet) LOG_LEVEL="ERROR"; QUIET=1; shift ;;
             --no-color) NO_COLOR=1; shift ;;
+            --debug) LOG_LEVEL="DEBUG"; VERBOSE=true; shift ;;
+            --version) echo "$SCRIPT_NAME v$VERSION ($CODENAME)"; exit 0 ;;
+            -h|--help) show_help; exit 0 ;;
             --update) check_for_update; exit 0 ;;
             *) break ;;
         esac
     done
 
-    # Initialize directories
     mkdir -p "$LOG_DIR" "$OUTPUT_DIR" "$LOOT_DIR"
 
-    # Legal disclaimer check
-    check_legal
+    if [[ "$(config_get FIRST_RUN_COMPLETE)" != "true" ]]; then
+        first_run_wizard
+    else
+        check_legal
+    fi
     
-    # Parse arguments
-    case "${1:-}" in
+    local command="${1:-menu}"
+    [[ $# -gt 0 ]] && shift || true
+
+    case "$command" in
         ""|menu|-i)  main_menu ;;
-        scan)        shift; cli_scan "$@" ;;
-        wifi)        shift; cli_wifi "$@" ;;
-        crack)       shift; cli_crack "$@" ;;
-        session)     shift; cli_session "$@" ;;
+        wizard)
+            case "${1:-scan}" in
+                scan)   scan_wizard ;;
+                wifi)   wifi_wizard ;;
+                *)      scan_wizard ;;
+            esac
+            ;;
+        scan)        cli_scan "$@" ;;
+        discover)    discover_cmd "$@" ;;
+        wifi)        cli_wifi "$@" ;;
+        crack)       cli_crack "$@" ;;
+        session)     cli_session "$@" ;;
         history)     show_history ;;
-        favorite)    shift; favorite_cmd "$@" ;;
-        alias)       shift; alias_cmd "$@" ;;
-        profile)     shift; profile_cmd "$@" ;;
-        discover)    shift; discover_cmd "$@" ;;
-        export)      shift; export_cmd "$@" ;;
-        schedule)    shift; schedule_cmd "$@" ;;
-        diff)        shift; diff_cmd "$@" ;;
+        favorite)    favorite_cmd "$@" ;;
+        alias)       alias_cmd "$@" ;;
+        profile)     profile_cmd "$@" ;;
+        export)      export_cmd "$@" ;;
+        schedule)    schedule_cmd "$@" ;;
+        diff)        diff_cmd "$@" ;;
         status|arsenal)
-            shift
             case "${1:-}" in
                 --compact|-c)   cmd_status_compact ;;
                 --json|-j)      cmd_status_json ;;
@@ -4488,11 +5266,23 @@ main() {
                 *)              cmd_status_full ;;
             esac
             ;;
-        install)     cmd_install_arsenal ;;
-        install-quick) cmd_install_quick ;;
-        help|-h|--help) show_usage ;;
+        install)         cmd_install_arsenal ;;
+        install-quick)   cmd_install_quick ;;
+        config)
+            case "${1:-show}" in
+                edit)   config_edit ;;
+                show)   config_show ;;
+                get)    config_get "$2" ;;
+                set)    config_set "$2" "$3" ;;
+                reset)  config_reset ;;
+                path)   echo "$CONFIG_FILE" ;;
+            esac
+            ;;
+        update)     check_for_update ;;
+        logs)       cmd_view_logs "$@" ;;
+        help)       show_help "$@" ;;
         version|-v|--version) echo "$SCRIPT_NAME v$VERSION ($CODENAME)" ;;
-        *)           log_error "Unknown command: $1"; show_usage; exit 1 ;;
+        *)           log_error "Unknown command: $command"; echo -e "    ${C_SHADOW}Run ${C_CYAN}netreaper help${C_RESET}${C_SHADOW} for usage${C_RESET}"; exit 1 ;;
     esac
 }
 

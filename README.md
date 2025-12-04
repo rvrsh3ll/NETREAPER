@@ -13,7 +13,7 @@
 
 ### *"Some tools scan. Some tools attack. I do both."*
 
-[![Version](https://img.shields.io/badge/VERSION-4.3.0_PHANTOM-ff0040?style=for-the-badge&logo=ghost&logoColor=white)](https://github.com/Nerds489/NETREAPER)
+[![Version](https://img.shields.io/badge/VERSION-5.0.0_PHANTOM_PROTOCOL-ff0040?style=for-the-badge&logo=ghost&logoColor=white)](https://github.com/Nerds489/NETREAPER)
 [![License](https://img.shields.io/badge/LICENSE-APACHE_2.0-00d4ff?style=for-the-badge&logo=opensourceinitiative&logoColor=white)](LICENSE)
 [![Platform](https://img.shields.io/badge/PLATFORM-LINUX-ffaa00?style=for-the-badge&logo=linux&logoColor=white)](https://www.linux.org/)
 [![Bash](https://img.shields.io/badge/BASH-5.0+-40c057?style=for-the-badge&logo=gnubash&logoColor=white)](https://www.gnu.org/software/bash/)
@@ -79,6 +79,10 @@ git clone https://github.com/Nerds489/NETREAPER.git && cd NETREAPER && sudo ./in
 ---
 
 ## 🎯 Features
+
+- Premium UX: guided scan/wifi wizards, first-run setup, compact/json status, quick reference.
+- Compliance-ready logging: log levels, audit trails, spinners, progress bars, verbose toggle.
+- Smarter safety: confirmations for dangerous operations, privilege escalation helper, target validation.
 
 ### 🔍 RECON
 | Tool | Purpose |
@@ -237,7 +241,7 @@ netreaper --version
 - [x] v4.0 - Menu restructure, separate installer, sudo handling
 - [x] v4.1 - README overhaul, style updates
 - [x] v4.3 - OFFTRACKMEDIA licensing, GitHub templates
-- [ ] v4.5 - Profile system, favorites, aliases
+- [x] v5.0 - Phantom Protocol UX/logging/wizards overhaul
 - [ ] v5.0 - Plugin architecture, custom modules
 
 ---

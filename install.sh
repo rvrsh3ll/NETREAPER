@@ -1,70 +1,73 @@
 #!/usr/bin/env bash
-set -euo pipefail
+#═══════════════════════════════════════════════════════════════════════════════
+#    NETREAPER Installer
+#    Copyright (c) 2025 OFFTRACKMEDIA Studios
+#═══════════════════════════════════════════════════════════════════════════════
 
-PREFIX="/usr/local/bin"
-COMPDIR="/etc/bash_completion.d"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-TARGET_BIN="${SCRIPT_DIR}/netreaper"
-TARGET_NAME="netreaper"
-CONFIG_DIR="${HOME}/.netreaper"
-DRY_RUN=0
+set -e
 
-usage() {
-cat <<USAGE
-Install netreaper
-Usage: $0 [--prefix DIR] [--compdir DIR] [--dry-run]
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+NC='\033[0m'
 
-  --prefix DIR   Install destination (default: /usr/local/bin)
-  --compdir DIR  Bash completion directory (default: /etc/bash_completion.d)
-  --dry-run      Show actions without changing system
-  -h, --help     Show this help
-USAGE
-}
+echo -e "${CYAN}"
+cat << 'EOF_ART'
+    ███╗   ██╗███████╗████████╗██████╗ ███████╗ █████╗ ██████╗ ███████╗██████╗ 
+    ████╗  ██║██╔════╝╚══██╔══╝██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔════╝██╔══██╗
+    ██╔██╗ ██║█████╗     ██║   ██████╔╝█████╗  ███████║██████╔╝█████╗  ██████╔╝
+    ██║╚██╗██║██╔══╝     ██║   ██╔══██╗██╔══╝  ██╔══██║██╔═══╝ ██╔══╝  ██╔══██╗
+    ██║ ╚████║███████╗   ██║   ██║  ██║███████╗██║  ██║██║     ███████╗██║  ██║
+    ╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝
+EOF_ART
+echo -e "${NC}"
+echo -e "    ${CYAN}NETREAPER v5.0.0 Installer${NC}"
+echo
 
-run_cmd() {
-    local cmd="$*"
-    if [[ "$DRY_RUN" -eq 1 ]]; then
-        echo "[DRY] $cmd"
-    else
-        eval "$cmd"
-    fi
-}
-
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --prefix) PREFIX="$2"; shift 2 ;;
-        --compdir) COMPDIR="$2"; shift 2 ;;
-        --dry-run) DRY_RUN=1; shift ;;
-        -h|--help) usage; exit 0 ;;
-        *) echo "Unknown option: $1"; usage; exit 1 ;;
-    esac
-done
-
-if [[ ! -f "$TARGET_BIN" ]]; then
-    echo "Error: netreaper not found at $TARGET_BIN" >&2
+# Check root
+if [[ $EUID -ne 0 ]]; then
+    echo -e "    ${RED}[!]${NC} This installer must be run as root"
+    echo -e "    ${CYAN}[*]${NC} Usage: sudo ./install.sh"
     exit 1
 fi
 
-run_cmd "mkdir -p '$PREFIX'"
-run_cmd "cp '$TARGET_BIN' '$PREFIX/$TARGET_NAME'"
-run_cmd "chmod +x '$PREFIX/$TARGET_NAME'"
-if [[ -f "$SCRIPT_DIR/netreaper-install" ]]; then
-    run_cmd "cp '$SCRIPT_DIR/netreaper-install' '$PREFIX/netreaper-install'"
-    run_cmd "chmod +x '$PREFIX/netreaper-install'"
+# Installation paths
+PREFIX="${PREFIX:-/usr/local/bin}"
+COMPLETION_DIR="/etc/bash_completion.d"
+
+echo -e "    ${CYAN}[*]${NC} Installing to ${PREFIX}..."
+
+# Install main scripts
+install -m 755 netreaper "$PREFIX/netreaper"
+echo -e "    ${GREEN}[✓]${NC} Installed netreaper"
+
+install -m 755 netreaper-install "$PREFIX/netreaper-install"
+echo -e "    ${GREEN}[✓]${NC} Installed netreaper-install"
+
+# Install bash completion
+if [[ -d "$COMPLETION_DIR" ]]; then
+    install -m 644 completions/netreaper.bash "$COMPLETION_DIR/netreaper"
+    echo -e "    ${GREEN}[✓]${NC} Installed bash completion"
 fi
 
-if [[ -f "$SCRIPT_DIR/completions/netreaper.bash" ]]; then
-    run_cmd "mkdir -p '$COMPDIR'"
-    run_cmd "cp '$SCRIPT_DIR/completions/netreaper.bash' '$COMPDIR/netreaper'"
-fi
+# Create config directory
+mkdir -p /etc/netreaper
+mkdir -p ~/.netreaper/{logs,output,loot,sessions}
+echo -e "    ${GREEN}[✓]${NC} Created /etc/netreaper"
 
-run_cmd "mkdir -p '$CONFIG_DIR/logs' '$CONFIG_DIR/output' '$CONFIG_DIR/loot' '$CONFIG_DIR/sessions'"
-
-cat <<'MSG'
-Install complete.
-Usage:
-  netreaper menu          # interactive UI
-  netreaper scan <target> # quick scan
-  netreaper crack <cap>   # handshake cracking
-  netreaper session start # start engagement
-MSG
+echo
+echo -e "    ${GREEN}════════════════════════════════════════════════════════${NC}"
+echo -e "    ${GREEN}    ✓ NETREAPER v5.0.0 installed successfully!${NC}"
+echo -e "    ${GREEN}════════════════════════════════════════════════════════${NC}"
+echo
+echo -e "    ${CYAN}Quick Start:${NC}"
+echo -e "        netreaper              # Launch interactive menu"
+echo -e "        netreaper wizard scan  # Guided scan wizard"
+echo -e "        netreaper help         # Show all commands"
+echo
+echo -e "    ${CYAN}Install Tools:${NC}"
+echo -e "        sudo netreaper-install # Interactive installer"
+echo
+echo -e "    ${CYAN}© 2025 OFFTRACKMEDIA Studios${NC}"
+echo

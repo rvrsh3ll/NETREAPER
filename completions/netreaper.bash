@@ -1,46 +1,58 @@
-# bash completion for netreaper
-_netreaper_cmds="scan wifi crack session osint web exploit stress traffic install status help version"
-_netreaper_scan_opts="--quick --full --stealth --vuln --udp --masscan"
-_netreaper_wifi_opts="--monitor --managed --scan --deauth --wps --handshake"
-_netreaper_crack_opts="--aircrack --hashcat --john --convert"
-_netreaper_session_opts="--start --resume --status --notes --export --list"
+# NETREAPER bash completion
+# Version: 5.0.0
 
-_netreaper_interfaces() {
-    command ls /sys/class/net 2>/dev/null | tr '\n' ' '
-}
+_netreaper() {
+    local cur prev words cword
+    _init_completion || return
 
-_netreaper_sessions() {
-    local sessdir="${HOME}/.netreaper/sessions"
-    if [[ -d "$sessdir" ]]; then
-        command find "$sessdir" -maxdepth 1 -mindepth 1 -type d -printf '%f ' 2>/dev/null
-    fi
-}
+    local commands="menu wizard scan discover wifi status install config session update logs export help"
+    local scan_opts="--quick --standard --full --stealth --vuln --verbose --output --json"
+    local global_opts="-v --verbose -q --quiet --no-color --debug --version --help"
+    local config_cmds="edit show get set reset path"
+    local session_cmds="start resume list export notes"
+    local status_opts="--compact --json --category"
+    local categories="scanning dns ssl wifi web exploit traffic osint creds post"
 
-# shellcheck disable=SC2207
-_netreaper()
-{
-    local cur prev
-    COMPREPLY=()
-    cur=${COMP_WORDS[COMP_CWORD]}
-    prev=${COMP_WORDS[COMP_CWORD-1]}
-
-    case "$prev" in
+    case "${prev}" in
+        netreaper)
+            COMPREPLY=($(compgen -W "${commands} ${global_opts}" -- "${cur}"))
+            return
+            ;;
         scan)
-            COMPREPLY=( $(compgen -W "$_netreaper_scan_opts" -- "$cur") )
-            return 0 ;;
-        wifi)
-            COMPREPLY=( $(compgen -W "$_netreaper_wifi_opts $(_netreaper_interfaces)" -- "$cur") )
-            return 0 ;;
-        crack)
-            COMPREPLY=( $(compgen -W "$_netreaper_crack_opts" -- "$cur") )
-            return 0 ;;
+            COMPREPLY=($(compgen -W "${scan_opts}" -- "${cur}"))
+            return
+            ;;
+        wizard)
+            COMPREPLY=($(compgen -W "scan wifi" -- "${cur}"))
+            return
+            ;;
+        config)
+            COMPREPLY=($(compgen -W "${config_cmds}" -- "${cur}"))
+            return
+            ;;
         session)
-            COMPREPLY=( $(compgen -W "$_netreaper_session_opts $(_netreaper_sessions)" -- "$cur") )
-            return 0 ;;
+            COMPREPLY=($(compgen -W "${session_cmds}" -- "${cur}"))
+            return
+            ;;
+        status)
+            COMPREPLY=($(compgen -W "${status_opts}" -- "${cur}"))
+            return
+            ;;
+        --category)
+            COMPREPLY=($(compgen -W "${categories}" -- "${cur}"))
+            return
+            ;;
+        install)
+            COMPREPLY=($(compgen -W "all essentials ${categories}" -- "${cur}"))
+            return
+            ;;
+        help)
+            COMPREPLY=($(compgen -W "scan wifi config session" -- "${cur}"))
+            return
+            ;;
     esac
 
-    COMPREPLY=( $(compgen -W "$_netreaper_cmds" -- "$cur") )
-    return 0
+    COMPREPLY=($(compgen -W "${commands}" -- "${cur}"))
 }
 
 complete -F _netreaper netreaper
