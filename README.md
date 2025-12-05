@@ -65,7 +65,7 @@ git clone https://github.com/Nerds489/NETREAPER.git
 cd NETREAPER
 
 # Summon it
-sudo ./install.sh
+sudo bash ./install.sh
 
 # Unleash it
 netreaper
@@ -73,7 +73,7 @@ netreaper
 
 **One-liner for the impatient:**
 ```bash
-git clone https://github.com/Nerds489/NETREAPER.git && cd NETREAPER && sudo ./install.sh && netreaper
+git clone https://github.com/Nerds489/NETREAPER.git && cd NETREAPER && sudo bash ./install.sh && netreaper
 ```
 
 ---
