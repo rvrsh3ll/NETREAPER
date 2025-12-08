@@ -68,7 +68,7 @@ cd NETREAPER
 sudo bash ./install.sh
 
 # Unleash it
-netreaper
+sudo netreaper
 ```
 
 **One-liner for the impatient:**
@@ -212,24 +212,24 @@ netreaper status
 
 ```bash
 # Interactive menu (default)
-netreaper
+sudo netreaper
 
 # Direct commands
-netreaper scan 192.168.1.0/24 --quick
-netreaper scan 10.0.0.1 --full --vuln
-netreaper wifi --monitor wlan0
+sudo netreaper scan 192.168.1.0/24 --quick
+sudo netreaper scan 10.0.0.1 --full --vuln
+sudo netreaper wifi --monitor wlan0
 
 # Session management
-netreaper session start
-netreaper session resume
+sudo netreaper session start
+sudo netreaper session resume
 
 # Tool management
-netreaper status
-netreaper install
+sudo netreaper status
+sudo netreaper install
 
 # Help
-netreaper help
-netreaper --version
+sudo netreaper help
+sudonetreaper --version
 ```
 
 ---
